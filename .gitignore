@@ -1,0 +1,6 @@
+.env
+fly.toml
+dist
+node_modules
+bun.lockb
+Dockerfile

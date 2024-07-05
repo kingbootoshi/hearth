@@ -1,0 +1,26 @@
+{
+  "name": "alpha_summary",
+  "version": "1.0.0",
+  "description": "To install dependencies:",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "bun dist/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@flydotio/dockerfile": "latest",
+    "@types/bun": "latest",
+    "@types/node": "^20.14.10",
+    "@types/node-cron": "^3.0.11",
+    "typescript": "^5.5.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.22.0",
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3"
+  }
+}
