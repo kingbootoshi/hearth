@@ -11,34 +11,46 @@ export class RuneAlertModule {
     if (message.channel.id === this.runeAlertChannelId && message.embeds.length > 0) {
       try {
         const embed = message.embeds[0];
-        if (embed.title === 'NEW RUNE 💥') {
+        if (embed.title?.includes('NEW RUNE')) {
           const newEmbed = new EmbedBuilder()
             .setTitle("NEW RUNE ALERT!")
             .setColor('#800080');
-
+  
           let runeName = '';
-          embed.fields?.forEach(field => {
-            if (field.name === 'RUNE NAME:') {
-              runeName = field.value;
-            }
-            if (field.name !== 'Mint Link Adobit:' && !field.name.includes('Telegram bot')) {
-              newEmbed.addFields({ name: field.name, value: field.value });
+          const descriptionLines = embed.description?.split('\n') || [];
+          
+          descriptionLines.forEach(line => {
+            const trimmedLine = line.trim();
+            if (trimmedLine.includes('RUNE NAME:')) {
+              runeName = trimmedLine.split('RUNE NAME:')[1].trim().replace(/^\*\*|\*\*$/g, '');
+              newEmbed.addFields({ name: 'RUNE NAME', value: runeName });
+            } else if (line.match(/^[💰⛏️📌📊🔄]/)) {
+              const [key, value] = line.split(':').map(part => part.trim());
+              if (!key.includes('Mint Link Adobit')) {
+                const cleanKey = key.replace(/\*\*/g, '').replace(/[^\w\s]/g, '').trim();
+                newEmbed.addFields({ name: cleanKey, value: value.replace(/^\*\*/, '') });
+              }
             }
           });
-
+  
           if (runeName) {
-            const mintLink = `https://runeblaster.io/${encodeURIComponent(runeName)}`;
+            const mintLink = `https://runeblaster.io/${encodeURIComponent(runeName).replace(/^%20/, '')}`;
             newEmbed.addFields({ name: 'Mint Link:', value: mintLink });
-
+  
+            const infoLink = `https://geniidata.com/ordinals/runes/${encodeURIComponent(runeName).replace(/^%20/, '')}`;
+            newEmbed.addFields({ name: 'Info:', value: infoLink });
+  
+            const twitterDDLink = `https://x.com/search?q=${encodeURIComponent(runeName).replace(/^%20/, '')}`;
+            newEmbed.addFields({ name: 'Twitter DD:', value: twitterDDLink });
+  
             const runeBlasterChannel = this.client.channels.cache.get(this.runeBlasterChannelId) as TextChannel;
             if (runeBlasterChannel) {
+              // Send the ping in the message content, and the embed separately
               await runeBlasterChannel.send({
                 content: `<@&${this.runePingRoleId}>`,
                 embeds: [newEmbed]
               });
             }
-          } else {
-            console.error('Rune name not found in the embed');
           }
         }
       } catch (error) {

@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "start": "bun dist/index.js"
+    "start": "bun run dist/index.js"
   },
   "keywords": [],
   "author": "",
@@ -19,8 +19,11 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.22.0",
+    "axios": "^1.7.7",
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
-    "node-cron": "^3.0.3"
+    "mongodb": "^6.8.0",
+    "node-cron": "^3.0.3",
+    "soul-engine": "^0.1.48"
   }
 }

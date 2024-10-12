@@ -1,152 +1,128 @@
-import { Client, Message, TextChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ButtonComponent, ButtonInteraction } from 'discord.js';
+import {
+  Client,
+  Collection,
+  Interaction,
+  ChatInputCommandInteraction,  // Import ChatInputCommandInteraction
+  SlashCommandBuilder,
+  REST,
+  Routes,
+  ButtonInteraction,
+} from 'discord.js';
+import * as fs from 'fs';
+import * as path from 'path';
 
-interface TreasureData {
-  prizeName: string;
-  claimed: boolean;
-  claimedBy?: string;
+interface Command {
+  data: SlashCommandBuilder;
+  execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
+  handleButtonInteraction?: (interaction: ButtonInteraction) => Promise<void>;
 }
 
 export class CommandHandler {
-  private commands: Map<string, (message: Message, args: string[]) => Promise<void>>;
-  private treasures: Map<string, TreasureData> = new Map();
+  private commands: Collection<string, Command>;
 
   constructor(private client: Client) {
-    this.commands = new Map();
-    this.registerCommands();
-    this.setupButtonHandler();
+    this.commands = new Collection();
+    this.loadCommands();
   }
 
-  private registerCommands(): void {
-    this.commands.set('treasure', this.treasureCommand.bind(this));
-  }
+  // Load command files dynamically from the commands directory
+  private loadCommands(): void {
+    const commandsPath = path.join(__dirname, 'modules', 'commands');
+    const commandFiles = fs
+      .readdirSync(commandsPath)
+      .filter(file => file.endsWith('.js') || file.endsWith('.ts'));
 
-  public async handleMessage(message: Message): Promise<void> {
-    if (!message.content.startsWith('!')) return;
+    for (const file of commandFiles) {
+      const filePath = path.join(commandsPath, file);
+      const commandModule = require(filePath);
+      const command: Command = commandModule;
 
-    const args = message.content.slice(1).trim().split(/ +/);
-    const command = args.shift()?.toLowerCase();
-
-    if (command && this.commands.has(command)) {
-      await this.commands.get(command)!(message, args);
+      if (command.data) {
+        this.commands.set(command.data.name, command);
+      } else {
+        console.warn(
+          `[WARNING] The command at ${filePath} is missing 'data' or 'execute'`
+        );
+      }
     }
   }
 
-  private async treasureCommand(message: Message, args: string[]): Promise<void> {
-    // Check if the user has permission to use this command
-    if (!message.member?.permissions.has('ManageMessages')) {
-      await message.reply('You do not have permission to use this command.');
+  // Register commands to the guild specified in your .env file
+  public async registerCommands(): Promise<void> {
+    const guildId = process.env.GUILD_ID;
+    const token = process.env.DISCORD_TOKEN;
+    const clientId = this.client.user?.id;
+
+    if (!guildId || !token || !clientId) {
+      console.error('Missing environment variables for command registration');
       return;
     }
 
-    // Check if all required arguments are provided
+    const commandsData = this.commands.map(command => command.data.toJSON());
 
-    if (args.length < 4) {
-        await message.reply('Usage: !treasure <channelID> <prizeName> <imageURL> <description>');
-        return;
-      }
-    
-    // Parse arguments, respecting quoted strings
-    const parsedArgs = message.content.slice(message.content.indexOf(' ') + 1).match(/("[^"]+"|[^\s"]+)/g);
-    
-    if (!parsedArgs || parsedArgs.length < 4) {
-        await message.reply('Usage: !treasure <channelID> "<prizeName>" <imageURL> <description>');
-        return;
-    }
+    const rest = new REST({ version: '10' }).setToken(token);
 
-    const channelId = parsedArgs.shift()!.replace(/"/g, '');
-    const prizeName = parsedArgs.shift()!.replace(/"/g, '');
-    const imageUrl = parsedArgs.shift()!.replace(/"/g, '');
-    const description = parsedArgs.join(' ').replace(/"/g, '');
-
-    // Create the treasure embed
-    const treasureEmbed = new EmbedBuilder()
-        .setTitle(`🎁 New Treasure: ${prizeName}`)
-        .setDescription(description)
-        .setColor('#FFD700')
-        .setTimestamp();
-
-    // Set image only if URL is valid
     try {
-        new URL(imageUrl);
-        treasureEmbed.setImage(imageUrl);
+      console.log(
+        `Started refreshing ${commandsData.length} application (/) commands.`
+      );
+
+      await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+        body: commandsData,
+      });
+
+      console.log(
+        `Successfully reloaded ${commandsData.length} application (/) commands.`
+      );
     } catch (error) {
-        console.warn('Invalid image URL:', imageUrl);
-        await message.reply('The provided image URL is invalid. The treasure will be created without an image.');
+      console.error(error);
     }
-        
-      // Get the specified channel
-      const channel = this.client.channels.cache.get(channelId) as TextChannel;
-    
-      if (!channel || !(channel instanceof TextChannel)) {
-        await message.reply('Invalid channel ID or not a text channel.');
-        return;
-      }
-    
-      // Create the claim button
-      const buttonId = `claim_${Date.now()}`;
-      const claimButton = new ButtonBuilder()
-        .setCustomId(buttonId)
-        .setLabel('Claim Treasure')
-        .setStyle(ButtonStyle.Primary);
-    
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(claimButton);
-    
-      // Send the message to the specified channel
-      try {
-        // Send the embed and button
-        const sentMessage = await channel.send({
-          embeds: [treasureEmbed],
-          components: [row]
-        });
-    
-        // Store the treasure data
-        this.treasures.set(buttonId, {
-          prizeName,
-          claimed: false
-        });
-    
-        await message.reply(`Treasure message sent to <#${channelId}>`);
-      } catch (error) {
-        console.error('Error sending treasure message:', error);
-        await message.reply('An error occurred while sending the treasure message.');
-      }
-    }
-
-  private setupButtonHandler(): void {
-    this.client.on('interactionCreate', async (interaction) => {
-      if (!interaction.isButton()) return;
-
-      const { customId } = interaction;
-      const treasureData = this.treasures.get(customId);
-
-      if (treasureData && !treasureData.claimed) {
-        await this.handleTreasureClaim(interaction, treasureData);
-      }
-    });
   }
 
-  private async handleTreasureClaim(interaction: ButtonInteraction, treasureData: TreasureData): Promise<void> {
-    treasureData.claimed = true;
-    treasureData.claimedBy = interaction.user.username;
+  // Handle interaction events for slash commands
+  public async handleInteraction(interaction: Interaction): Promise<void> {
+    if (interaction.isChatInputCommand()) {
+      const command = this.commands.get(interaction.commandName);
 
-    const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-      .setTitle(`🎉 Treasure Claimed: ${treasureData.prizeName}`)
-      .setDescription(`This treasure has been claimed by ${interaction.user.username}!`);
+      if (!command) {
+        console.error(`No command matching ${interaction.commandName} was found.`);
+        await interaction.reply({
+          content: 'Command not found.',
+          ephemeral: true,
+        });
+        return;
+      }
 
-      const disabledButton = ButtonBuilder.from(interaction.message.components[0].components[0] as ButtonComponent)
-      .setDisabled(true)
-      .setLabel('Claimed');
+      try {
+        await command.execute(interaction);
+      } catch (error) {
+        console.error(error);
+        await interaction.reply({
+          content: 'There was an error executing that command.',
+          ephemeral: true,
+        });
+      }
+    } else if (interaction.isButton()) {
+      // Handle button interactions
+      await this.handleButtonInteraction(interaction as ButtonInteraction);
+    }
+    // Handle other interaction types if needed
+  }
 
-    const updatedRow = new ActionRowBuilder<ButtonBuilder>().addComponents(disabledButton);
+  // Handle button interactions
+  public async handleButtonInteraction(interaction: ButtonInteraction): Promise<void> {
+    // For the treasure command
+    const customId = interaction.customId;
+    const treasureCommand = this.commands.get('treasure');
 
-    await interaction.update({
-      embeds: [updatedEmbed],
-      components: [updatedRow]
-    });
-
-    await interaction.followUp({
-      content: `Congratulations, ${interaction.user.username}! You've claimed the ${treasureData.prizeName}!`,
-      ephemeral: true
-    });
+    if (treasureCommand && treasureCommand.handleButtonInteraction) {
+      await treasureCommand.handleButtonInteraction(interaction);
+    } else {
+      console.warn(`No handler for button interaction: ${customId}`);
+      await interaction.reply({
+        content: 'This button is not supported.',
+        ephemeral: true,
+      });
+    }
   }
 }

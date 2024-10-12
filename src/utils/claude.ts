@@ -22,7 +22,7 @@ export async function createMessage(inputText: string): Promise<string> {
     ## !! GUIDELINES !!
     
     - Prioritize information that could lead to financial opportunities
-    - Include ALL relevant links (no fabrication)
+    - Include ALL relevant links ONLY shown from the chat logs! If a link is not in the chat logs, do NOT add it.
     - Ignore greetings, personal activities, or off-topic conversations
     - Assume linked Twitter posts are relevant; mention them without describing content
     - Keep the summary concise yet informative
@@ -33,7 +33,8 @@ export async function createMessage(inputText: string): Promise<string> {
     
     - Use bullet points for each item
     - Bold key terms or project names
-    - Include links using markdown format"
+    - Include links using markdown format
+    - ONLY USE LINKS DIRECTLY FOUND IN THE CHATLOG"
     `,
     messages: [
       {
