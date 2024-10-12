@@ -1,4 +1,4 @@
-# alpha_summary
+# quest boo discord bot
 
 To install dependencies:
 

@@ -9,6 +9,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/modules/commands/imageGenCommand.ts"],
   "exclude": ["node_modules"]
 }
