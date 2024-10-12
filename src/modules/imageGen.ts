@@ -8,8 +8,6 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 // RunPod configuration
 const runpodApiKey = process.env.RUNPOD_API_KEY!
 const runpodPodId = process.env.RUNPOD_ID!
-const loraName = process.env.LORA_NAME!
-const defaultDenoise = 1
 
 // Interface for workflow nodes
 interface WorkflowNode {
@@ -63,7 +61,7 @@ export async function getGeneratedImage(jobId: string): Promise<string> {
   const statusEndpoint = `https://api.runpod.ai/v2/${runpodPodId}/status/${jobId}`
 
   const pollingInterval = 5000 // 5 seconds
-  const timeout = 300000 // 5 minutes
+  const timeout = 600000 // 10 minutes
   const startTime = Date.now()
 
   while (Date.now() - startTime < timeout) {

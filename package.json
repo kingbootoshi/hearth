@@ -24,7 +24,6 @@
     "dotenv": "^16.4.5",
     "groq-sdk": "^0.7.0",
     "mongodb": "^6.8.0",
-    "node-cron": "^3.0.3",
-    "soul-engine": "^0.1.48"
+    "node-cron": "^3.0.3"
   }
 }

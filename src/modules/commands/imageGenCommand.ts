@@ -1,6 +1,7 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, AttachmentBuilder, EmbedBuilder } from 'discord.js'
 import { submitImageJob, getGeneratedImage } from '../imageGen'
 import { enhancePrompt } from '../../utils/enhancePrompt'
+import { suggestPrompt } from '../../utils/suggestPrompt'  // Import the suggestPrompt function
 
 export const data = new SlashCommandBuilder()
   .setName('imagine')
@@ -36,12 +37,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     // Create an attachment for the image
     const attachment = new AttachmentBuilder(imageBuffer, { name: 'image.png' })
 
+    // Update the ephemeral reply to inform the user that the image has been posted
+    await interaction.editReply('Your image has been generated and posted in the channel!')
+
+    // Call suggestPrompt to get Quest Boo's message
+    const questBooMessage = await suggestPrompt(userPrompt)
+
     // Create an embedded message
     const embed = new EmbedBuilder()
       .setColor('#FFD700') // Gold color
       .setTitle('Boo art imagined!')
-      .setDescription(userPrompt) // This should be the user's prompt
+      .setDescription(questBooMessage) // Use Quest Boo's message instead of the user prompt
       .setImage('attachment://image.png')
+      .setFooter({
+        text: `/imagine ${userPrompt}`,
+      })
 
     // Send the embedded message with the image to the channel (visible to everyone)
     await interaction.channel?.send({
@@ -49,9 +59,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       embeds: [embed],
       files: [attachment]
     })
-
-    // Update the ephemeral reply to inform the user that the image has been posted
-    await interaction.editReply('Your image has been generated and posted in the channel!')
   } catch (error) {
     console.error('Error in image generation command:', error)
     await interaction.editReply('Sorry, there was an error generating your image.')
