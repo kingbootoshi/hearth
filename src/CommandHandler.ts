@@ -79,7 +79,7 @@ export class CommandHandler {
     }
   }
 
-  // Handle interaction events for slash commands
+  // Handle interaction events
   public async handleInteraction(interaction: Interaction): Promise<void> {
     if (interaction.isChatInputCommand()) {
       const command = this.commands.get(interaction.commandName);
@@ -103,24 +103,43 @@ export class CommandHandler {
         });
       }
     } else if (interaction.isButton()) {
-      // Handle button interactions
       await this.handleButtonInteraction(interaction as ButtonInteraction);
     }
     // Handle other interaction types if needed
   }
 
   // Handle button interactions
-  public async handleButtonInteraction(interaction: ButtonInteraction): Promise<void> {
-    // For the treasure command
+  public async handleButtonInteraction(
+    interaction: ButtonInteraction
+  ): Promise<void> {
     const customId = interaction.customId;
-    const treasureCommand = this.commands.get('treasure');
 
-    if (treasureCommand && treasureCommand.handleButtonInteraction) {
-      await treasureCommand.handleButtonInteraction(interaction);
+    // Determine the command based on the customId prefix
+    let commandName: string | undefined;
+
+    if (customId.startsWith('treasure_')) {
+      commandName = 'treasure';
+    } else if (customId.startsWith('imageGen_')) {
+      commandName = 'imagine'; // Ensure this matches the command's registered name
+    } else if (customId.startsWith('randomGen_')) {
+      commandName = 'random';  // Ensure this matches the command's registered name
+    }
+
+    if (commandName) {
+      const command = this.commands.get(commandName);
+      if (command && command.handleButtonInteraction) {
+        await command.handleButtonInteraction(interaction);
+      } else {
+        console.warn(`No handler for button interaction in command: ${commandName}`);
+        await interaction.reply({
+          content: 'This button is not supported.',
+          ephemeral: true,
+        });
+      }
     } else {
-      console.warn(`No handler for button interaction: ${customId}`);
+      console.warn(`Unhandled button interaction: ${customId}`);
       await interaction.reply({
-        content: 'This button is not supported.',
+        content: 'This button is not recognized.',
         ephemeral: true,
       });
     }

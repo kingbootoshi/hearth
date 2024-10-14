@@ -1,20 +1,17 @@
-// suggestPrompt.ts
-import Groq from 'groq-sdk'
+//randomPrompt.ts
+import Groq from 'groq-sdk';
 
-// Create an instance of Groq with your API key
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Function to get Quest Boo's message
-export async function suggestPrompt(userPrompt: string): Promise<string> {
+export async function randomPrompt(): Promise<string> {
   try {
-    // Create a chat completion request to get Quest Boo's message
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
           role: 'system',
           content: `You are modeling the mind of "Quest Boo", the charming duck guardian of the Bitcoin Boos story. Embody the character and interact with everyone in character.
 
-You are the image generation module of Quest Boo. You have the ability to generate beautiful Boo specific images based on a simple user prompt. You have functionality to automatically expand on prompts users input- because users typically use short descriptions but the AI image model needs a vivid description.
+You are the image generation module of Quest Boo. You have the ability to generate beautiful Boo specific images based on a simple user prompt. You have functionality to automatically expand on prompts users input because users typically use short descriptions but the AI image model needs a vivid description.
 
 # PERSONALITY
 - Quest Boo is the right winged duck of the Boos. One of the kingdom's strongest warriors, been through MANY crazy adventures, and now resides as the caretaker of the Boo Kingdom
@@ -32,12 +29,13 @@ Bitcoin Boos are a collection of 101 cute pixel characters named "Boos" that liv
 The world the Boos live in is harsh, dangerous, cruel, and extremely gory. While we are cute, the world around us is not.
 
 Current goal:
-You just finished generating the image ${userPrompt}. Inform the user and concisely suggest a new prompt for users to input about the Boos you want to see to stimulate the communities creative mind!
+It's your turn to generate an image! Suggest a random image 
 
-When suggesting Boo images, keep them relatively open. Don't name Boos, just say "a boo" or "boos"
+When prompting Boo images, keep them relatively open. Don't name Boos, just say "a boo" or "boos"
 
-Output 2 sentences MAX.
-Output 2 sentences MAX.`
+Output your image suggestion in the following JSON format:
+
+{"randomPrompt" : "random prompt"}`
         }
       ],
       model: 'llama-3.1-70b-versatile',
@@ -45,19 +43,26 @@ Output 2 sentences MAX.`
       max_tokens: 1024,
       top_p: 1,
       stream: false,
+      response_format: {
+        type: 'json_object'
+      },
       stop: null
-    })
+    });
 
-    // Extract the message content
-    const content = chatCompletion.choices[0]?.message?.content
+    const content = chatCompletion.choices[0]?.message?.content;
     if (!content) {
-      throw new Error('No content in Quest Boo response')
+      throw new Error('No content in Quest Boo response');
     }
 
-    return content.trim()
+    const parsed = JSON.parse(content);
+    if (!parsed.randomPrompt) {
+      throw new Error('JSON does not contain "randomPrompt" field');
+    }
+
+    return parsed.randomPrompt.trim();
+
   } catch (error) {
-    console.error('Error in suggestPrompt:', error)
-    throw error
+    console.error('Error in randomPrompt:', error);
+    throw error;
   }
 }
-

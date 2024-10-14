@@ -164,7 +164,7 @@
   },
   "40": {
     "inputs": {
-      "lora_name": "dankomanko.safetensors",
+      "lora_name": "BTCBOO.safetensors",
       "strength_model": 1,
       "model": [
         "12",
@@ -190,7 +190,7 @@
   },
   "57": {
     "inputs": {
-      "text": "A cartoon style image depicting Wankomanko anthropomorphic wolf girl (wearing clothes) as a queen sitting on a throne. The background is a beautiful castle. The text above her is golden and sparkly saying \"THE RUNE QUEEN\"",
+      "text": "btcboo with the text 'IMAGE GEN FAILED' in 16 bit retro pixel art",
       "clip": [
         "11",
         0

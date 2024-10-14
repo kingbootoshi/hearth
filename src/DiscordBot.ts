@@ -1,4 +1,4 @@
-import { Client } from 'discord.js';
+import { Client, GatewayIntentBits, Partials } from 'discord.js';
 import { SummaryModule } from './modules/summaryModule';
 import { RuneAlertModule } from './modules/runeModule';
 // import { chatbotModule } from './modules/chatbotModule';
@@ -9,12 +9,24 @@ export class DiscordBot {
   private runeAlertModule: RuneAlertModule;
   // private chatbotModule: chatbotModule;
   private commandHandler: CommandHandler;
+  private client: Client;
 
-  constructor(private client: Client) {
-    this.summaryModule = new SummaryModule(client);
-    this.runeAlertModule = new RuneAlertModule(client);
-    // this.chatbotModule = new chatbotModule(client);
-    this.commandHandler = new CommandHandler(client);
+  constructor() {
+    // Initialize the client with required intents and partials
+    this.client = new Client({
+      intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMessageReactions,
+      ],
+      partials: [Partials.Message, Partials.Channel, Partials.Reaction],
+    });
+
+    this.summaryModule = new SummaryModule(this.client);
+    this.runeAlertModule = new RuneAlertModule(this.client);
+    // this.chatbotModule = new chatbotModule(this.client);
+    this.commandHandler = new CommandHandler(this.client);
   }
 
   public async start(): Promise<void> {
@@ -32,7 +44,7 @@ export class DiscordBot {
       await this.commandHandler.handleInteraction(interaction);
     });
 
-    // **Add the messageCreate listener back**
+    // Add the messageCreate listener back
     this.client.on('messageCreate', async (message) => {
       // Ensure the bot doesn't respond to itself or other bots
       if (message.author.bot) return;
@@ -41,6 +53,12 @@ export class DiscordBot {
       await this.summaryModule.handleMessage(message);
       await this.runeAlertModule.handleMessage(message);
       // await this.chatbotModule.handleMessage(message);
+    });
+
+    // Listen for message reaction additions
+    this.client.on('messageReactionAdd', async (reaction, user) => {
+      // Handle the reaction
+      console.log(`Reaction added: ${reaction.emoji.name} by ${user.tag}`);
     });
 
     await this.client.login(process.env.DISCORD_TOKEN);
