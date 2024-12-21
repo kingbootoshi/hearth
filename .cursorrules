@@ -1,0 +1,7 @@
+This codebase is a typescript discord.js modular discord bot capable of interacting with the community in discord.
+
+This bot is also capable of running different command functionalities based on modules and commands added in the src/commands folder.
+
+Command functionality should be created as a module in the src/modules folder. Adding the command to the discord bot is done in the src/commands folder.
+
+Commands are automatically loaded in when they are added to the commands folder, however button functionality has to be differentiated in the CommandHandler.ts file.

@@ -1,11 +1,7 @@
 // Import necessary modules
 import Groq from 'groq-sdk'
-import { enhancePrompt } from './enhancePrompt' // Ensure enhancePrompt is imported if used internally
 import * as path from 'path'
 import * as fs from 'fs'
-
-// Create an instance of Groq with your API key
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 // RunPod configuration
 const runpodApiKey = process.env.RUNPOD_API_KEY!
