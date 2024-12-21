@@ -5,7 +5,7 @@
 ![Quest Boo Banner](https://github.com/user-attachments/assets/0bd089bd-02f5-409d-b957-45fbb310bdcb)
 
 [![Made with Bun](https://img.shields.io/badge/Made%20with-Bun-orange.svg)](https://bun.sh)
-[![Discord](https://img.shields.io/badge/Discord-Add%20to%20Server-7289DA.svg)](your-invite-link-here)
+[![Discord](https://img.shields.io/badge/Discord-Add%20to%20Server-7289DA.svg)](https://discord.gg/bitcoinboos)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 </div>
