@@ -27,7 +27,7 @@ export class CommandHandler {
 
   // Load command files dynamically from the commands directory
   private loadCommands(): void {
-    const commandsPath = path.join(__dirname, 'modules', 'commands');
+    const commandsPath = path.join(__dirname, 'commands');
     const commandFiles = fs
       .readdirSync(commandsPath)
       .filter(file => file.endsWith('.js') || file.endsWith('.ts'));

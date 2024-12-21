@@ -1,2 +1,5 @@
-minor:
-- fix consistency with footer feedback text in random gens and button presses
+- setup supabase for quest boo
+- update alpha module messages.json to use the supabase database for messages
+- updated quest boo .json chat memory to also use supabase
+- create cloud memory system
+- connect quest boo to cloud memory system and add advanced memory from boop to quest boo

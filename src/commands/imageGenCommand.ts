@@ -1,52 +1,61 @@
-//randomGen.ts
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ButtonInteraction, AttachmentBuilder, MessageReaction, User } from 'discord.js';
-import { randomPrompt } from '../../utils/randomPrompt';
-import { submitImageJob, getGeneratedImage } from '../imageGen';
-import { enhancePrompt } from '../../utils/enhancePrompt';
-import { saveImageData } from '../../utils/supabase'; // Import the saveImageData function
+import {
+  ChatInputCommandInteraction,
+  SlashCommandBuilder,
+  AttachmentBuilder,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ButtonInteraction,
+  MessageReaction,
+  User,
+} from 'discord.js';
+import { submitImageJob, getGeneratedImage } from '../modules/imageGenModule/imageGen';
+import { enhancePrompt } from '../modules/imageGenModule/enhancePrompt';
+import { randomPrompt } from '../modules/imageGenModule/randomPrompt';
+import { saveImageData } from '../utils/supabase/imageGenDB'; // Import the saveImageData function
 
 // Utility function to generate a random hexadecimal color
 function getRandomColor(): number {
   return Math.floor(Math.random() * 0xffffff); // Generates a random color
 }
 
-// Define the /random command
 export const data = new SlashCommandBuilder()
-  .setName('random')
-  .setDescription("Generate a random image based on Quest Boo's imagination.");
+  .setName('imagine')
+  .setDescription('Generate an image from a prompt')
+  .addStringOption((option) =>
+    option
+      .setName('prompt')
+      .setDescription('The prompt for the image generation')
+      .setRequired(true)
+  );
 
-// Execute the /random command
-export async function execute(
-  interaction: ChatInputCommandInteraction
-): Promise<void> {
-  // Inform the user that the image is being generated
-  await interaction.reply({
-    content: "Generating a random image, I'll post it in the channel when it's done!",
-    ephemeral: true,
-  });
-
+export async function execute(interaction: ChatInputCommandInteraction) {
   try {
-    // Get a random prompt from Quest Boo
-    const userPrompt = await randomPrompt();
+    await interaction.deferReply({ ephemeral: true });
+    const userPrompt = interaction.options.getString('prompt', true);
 
-    // Optionally enhance the prompt
-    const enhancedPrompt = await enhancePrompt(userPrompt, '');
+    await interaction.editReply(
+      "Imagining your prompt, I'll post it in the channel when it's done!"
+    );
 
-    // Submit the image generation job
+    const aiAssistantInfo = '';
+    const enhancedPrompt = await enhancePrompt(userPrompt, aiAssistantInfo);
+
     const jobId = await submitImageJob(enhancedPrompt);
 
-    // Convert the base64 image to a buffer
     const base64Image = await getGeneratedImage(jobId);
     const imageBuffer = Buffer.from(base64Image, 'base64');
-
-    // Create an attachment from the image buffer
     const attachment = new AttachmentBuilder(imageBuffer, { name: 'image.png' });
 
-    // Create the embed with the image and prompt
-    const imageEmbed = new EmbedBuilder()
-      .setTitle('Random Image')
-      .setColor(getRandomColor()) // Set a random color for the embed
-      .setDescription(`Prompt: ${userPrompt}`)
+    await interaction.editReply(
+      `Finished imagining your prompt! ${interaction.user}`
+    );
+
+    const embed = new EmbedBuilder()
+      .setColor(getRandomColor())
+      .setTitle('Boo art imagined!')
+      .setDescription(`/imagine ${userPrompt}`)
       .setImage('attachment://image.png')
       .setFooter({
         text: 'Please rate this image 👍 or 👎 to give feedback so I can improve!',
@@ -54,24 +63,23 @@ export async function execute(
       }) // Added consistent footer with user's PFP and feedback prompt
       .setTimestamp();
 
-    // Create the buttons
     const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
-        .setCustomId('randomGen_regen')
+        .setCustomId(`imageGen_regen_${interaction.id}`)
         .setLabel('Regen prompt')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
-        .setCustomId('randomGen_randomGen')
+        .setCustomId(`imageGen_random_gen_${interaction.id}`)
         .setLabel('Random gen')
         .setStyle(ButtonStyle.Secondary)
     );
 
-    // Send the embed message with buttons to the channel, mentioning the user
+    // Send the message with the generated image
     const sentMessage = await interaction.channel?.send({
-      content: `I finished generating a random image! ${interaction.user}`,
-      embeds: [imageEmbed],
-      components: [buttons],
+      content: `Finished imagining your prompt! ${interaction.user}`,
+      embeds: [embed],
       files: [attachment],
+      components: [buttons],
     });
 
     // Check if the message was sent successfully
@@ -134,22 +142,30 @@ export async function execute(
       console.error('Failed to send the message with the generated image.');
     }
   } catch (error) {
-    console.error('Error generating image:', error);
-    await interaction.followUp({
-      content: 'There was an error generating the image.',
-      ephemeral: true,
-    });
+    console.error('Error in image generation command:', error);
+    await interaction.editReply('Sorry, there was an error generating your image.');
   }
 }
 
-// Handle button interactions for randomGen
 export async function handleButtonInteraction(
   interaction: ButtonInteraction
 ): Promise<void> {
+  // Defer the reply to acknowledge the interaction and allow time for processing
+  await interaction.deferReply({ ephemeral: true });
+
   const customId = interaction.customId;
 
-  // Defer the reply to provide an ephemeral loading message
-  await interaction.deferReply({ ephemeral: true });
+  if (!customId.startsWith('imageGen_')) return;
+
+  // Extract the embed from the message
+  const messageEmbed = interaction.message.embeds[0];
+  if (!messageEmbed) {
+    await interaction.followUp({
+      content: 'No embed found in the message.',
+      ephemeral: true,
+    });
+    return;
+  }
 
   let prompt: string;
   let actionReply: string;
@@ -158,20 +174,25 @@ export async function handleButtonInteraction(
   let description: string; // Embed description
 
   try {
-    if (customId === 'randomGen_regen') {
+    if (customId.startsWith('imageGen_regen_')) {
+      // For "Regen prompt" button, extract the prompt after "/imagine "
       actionReply =
         "Regenerating the prompt, I'll post it in the channel when it's done!";
-
-      // Extract the prompt from the interaction's message embed
-      prompt = getPromptFromInteraction(interaction);
+      const promptMatch = messageEmbed.description?.match(/\/imagine (.*)/);
+      if (promptMatch && promptMatch[1]) {
+        prompt = promptMatch[1];
+      } else {
+        throw new Error('Prompt not found in embed description.');
+      }
 
       // Set content, title, and description for "Regen prompt"
       content = `I finished regenerating the image! ${interaction.user}`;
       title = 'Art regenerated';
-      description = `Prompt: ${prompt}`;
-    } else if (customId === 'randomGen_randomGen') {
+      description = `/imagine ${prompt}`;
+    } else if (customId.startsWith('imageGen_random_gen_')) {
+      // For "Random gen" button, generate a new random prompt
       actionReply =
-        "Generating a new random image, I'll post it in the channel when it's done!";
+        "Generating a random image, I'll post it in the channel when it's done!";
       prompt = await randomPrompt();
 
       // Set content, title, and description for "Random gen"
@@ -204,35 +225,35 @@ export async function handleButtonInteraction(
     }); // Create attachment
 
     // Create the embed with the updated title and description
-    const imageEmbed = new EmbedBuilder()
+    const embed = new EmbedBuilder()
       .setTitle(title)
-      .setColor(getRandomColor())
+      .setColor(getRandomColor()) // Set a random color for the embed
       .setDescription(description)
       .setImage('attachment://image.png')
       .setFooter({
-        text: 'Please rate this image 👍 or 👎 to give feedback so I can improve!',
+        text: interaction.user.username,
         iconURL: interaction.user.avatarURL() || undefined,
-      }) // Updated footer to match the execute function
+      })
       .setTimestamp();
 
     // Reuse the buttons for further interactions
     const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
-        .setCustomId('randomGen_regen')
+        .setCustomId(`imageGen_regen_${interaction.id}`)
         .setLabel('Regen prompt')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
-        .setCustomId('randomGen_randomGen')
+        .setCustomId(`imageGen_random_gen_${interaction.id}`)
         .setLabel('Random gen')
         .setStyle(ButtonStyle.Secondary)
     );
 
-    // Send the message in the public channel with the updated content and embed
+    // Send the message with the generated image
     const sentMessage = await interaction.channel?.send({
       content: content,
-      embeds: [imageEmbed],
-      components: [buttons],
+      embeds: [embed],
       files: [attachment],
+      components: [buttons],
     });
 
     // Check if the message was sent successfully
@@ -295,26 +316,11 @@ export async function handleButtonInteraction(
       console.error('Failed to send the message with the generated image.');
     }
   } catch (error) {
-    console.error('Error generating image:', error);
-    // Notify the user of the error
+    console.error('Error handling button interaction:', error);
+    // Send an error message as a follow-up since we've deferred the reply
     await interaction.followUp({
-      content: 'There was an error generating the image.',
+      content: 'An error occurred while processing your request.',
       ephemeral: true,
     });
-  }
-}
-
-// Helper function to extract the prompt from the interaction
-function getPromptFromInteraction(interaction: ButtonInteraction): string {
-  const embed = interaction.message.embeds[0];
-  if (!embed) {
-    throw new Error('No embed found in the message');
-  }
-
-  const promptMatch = embed.description?.match(/Prompt: (.*)/);
-  if (promptMatch && promptMatch[1]) {
-    return promptMatch[1];
-  } else {
-    throw new Error('Prompt not found in embed description');
   }
 }

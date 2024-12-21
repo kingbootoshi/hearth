@@ -1,6 +1,6 @@
 // Import necessary modules
 import Groq from 'groq-sdk'
-import { enhancePrompt } from '../utils/enhancePrompt' // Ensure enhancePrompt is imported if used internally
+import { enhancePrompt } from './enhancePrompt' // Ensure enhancePrompt is imported if used internally
 
 // Create an instance of Groq with your API key
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
@@ -23,7 +23,7 @@ interface Workflow {
 export async function submitImageJob(prompt: string): Promise<string> {
   try {
     // Load and prepare the workflow
-    const workflow: Workflow = require('../utils/workflow_api.json')
+    const workflow: Workflow = require('workflow_api.json')
     updateWorkflowWithPrompt(workflow, prompt)
 
     // Use fetch for the POST request

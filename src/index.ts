@@ -13,7 +13,7 @@ const client = new Client({
   ]
 });
 
-const bot = new DiscordBot(client);
+const bot = new DiscordBot();
 bot.start();
 
 process.on("SIGINT", async () => {

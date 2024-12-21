@@ -1,13 +1,13 @@
 import { Client, GatewayIntentBits, Partials } from 'discord.js';
-import { SummaryModule } from './modules/summaryModule';
-import { RuneAlertModule } from './modules/runeModule';
-// import { chatbotModule } from './modules/chatbotModule';
+import { SummaryModule } from './modules/summaryModule/summaryModule';
+import { RuneAlertModule } from './modules/runeModule/runeModule';
+import { chatbotModule } from './modules/chatbotModule/chatbotModule';
 import { CommandHandler } from './CommandHandler';
 
 export class DiscordBot {
   private summaryModule: SummaryModule;
   private runeAlertModule: RuneAlertModule;
-  // private chatbotModule: chatbotModule;
+  private chatbotModule: chatbotModule;
   private commandHandler: CommandHandler;
   private client: Client;
 
@@ -19,13 +19,22 @@ export class DiscordBot {
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.DirectMessageTyping,
       ],
-      partials: [Partials.Message, Partials.Channel, Partials.Reaction],
+      partials: [
+        Partials.Message,
+        Partials.Channel,
+        Partials.Reaction,
+        Partials.User,
+        Partials.GuildMember,
+      ],
     });
 
     this.summaryModule = new SummaryModule(this.client);
     this.runeAlertModule = new RuneAlertModule(this.client);
-    // this.chatbotModule = new chatbotModule(this.client);
+    this.chatbotModule = new chatbotModule(this.client);
     this.commandHandler = new CommandHandler(this.client);
   }
 
@@ -33,7 +42,7 @@ export class DiscordBot {
     this.client.once('ready', async (readyClient) => {
       console.log(`Ready! Logged in as ${readyClient.user.tag}`);
       this.summaryModule.scheduleTasks();
-      // await this.chatbotModule.start(readyClient);
+      await this.chatbotModule.start(readyClient);
 
       // Register slash commands after the client is ready
       await this.commandHandler.registerCommands();
@@ -44,20 +53,17 @@ export class DiscordBot {
       await this.commandHandler.handleInteraction(interaction);
     });
 
-    // Add the messageCreate listener back
+    // Add the messageCreate listener
     this.client.on('messageCreate', async (message) => {
-      // Ensure the bot doesn't respond to itself or other bots
       if (message.author.bot) return;
 
-      // Handle messages in your modules
       await this.summaryModule.handleMessage(message);
       await this.runeAlertModule.handleMessage(message);
-      // await this.chatbotModule.handleMessage(message);
+      await this.chatbotModule.handleMessage(message);
     });
 
     // Listen for message reaction additions
     this.client.on('messageReactionAdd', async (reaction, user) => {
-      // Handle the reaction
       console.log(`Reaction added: ${reaction.emoji.name} by ${user.tag}`);
     });
 
@@ -65,7 +71,7 @@ export class DiscordBot {
   }
 
   public async stop(): Promise<void> {
-    // await this.chatbotModule.stop();
+    await this.chatbotModule.stop();
     await this.client.destroy();
   }
 }

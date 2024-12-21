@@ -29,7 +29,7 @@ export async function enhancePrompt(prompt: string, aiAssistantInfo: string): Pr
 ## TEAM INFO: \n
 The main subject and token is "btcboo" and the EXACT description of "btcboo, pink flush, whiteskin, vertically long rectangular black eyes, round head" is needed to gen an image with the character successfully. You may describe the boos outfit and accessories, but do not explain the face features or body features, besides poses.
 The images should ALWAYS be 16 bit retro pixel art. 
-Boos can take different forms and species, BUT the default should be "humanoid". Ex. "humanoid body" or if someone says duck "btcboo, in a duck body"
+Boos can take different forms and species, BUT the default should be "humanoid". Ex. "humanoid body" or if someone says duck it'd be "btcboo duck"
 Make sure to include clothing in the prompt, otherwise the Boo will gen naked!
     
 ### EXAMPLES:

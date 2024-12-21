@@ -4,3 +4,4 @@ dist
 node_modules
 bun.lockb
 Dockerfile
+package-lock.json
