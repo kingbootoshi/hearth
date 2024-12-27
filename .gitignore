@@ -5,3 +5,5 @@ node_modules
 bun.lockb
 Dockerfile
 package-lock.json
+logs
+metroBoomin
