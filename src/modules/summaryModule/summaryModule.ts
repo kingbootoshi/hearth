@@ -1,6 +1,4 @@
 import { Client, Message, TextChannel } from 'discord.js';
-import * as fs from 'fs';
-import * as path from 'path';
 import * as cron from 'node-cron';
 import { createMessage } from './summarizeAI';
 import {
@@ -14,10 +12,8 @@ import {
 } from '../../utils/supabase/summaryDB';
 
 export class SummaryModule {
-  private channelId = '1201049178906832956';
-  private summaryChannelId = '1215463522176339978';
-  private messagesFilePath = path.join(__dirname, '..', '..', 'messages.json');
-  private hourlySummariesFilePath = path.join(__dirname, '..', '..', 'hourlySummaries.json');
+  private channelId = '1201049178906832956'; //this is where the bot is listening for messages
+  private summaryChannelId = '1215463522176339978'; // this is where summaries get posted
 
   constructor(private client: Client) {}
 

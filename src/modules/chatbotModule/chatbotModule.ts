@@ -29,7 +29,7 @@ export class chatbotModule {
   constructor(client: Client) {
     logger.info('Initializing chatbotModule');
     this.client = client;
-    this.chatMemoryManager = new ChatMemoryManager(client, 5);
+    this.chatMemoryManager = new ChatMemoryManager(client, 30);
     this.anthropic = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY || '',
     });
@@ -56,37 +56,45 @@ export class chatbotModule {
       messageId: message.id
     }, 'Received new message');
 
+    // Ignore messages from bots
     if (message.author.bot) {
       logger.debug('Ignoring bot message');
       return;
     }
 
-    // Store message in memory
-    logger.info('Adding message to memory manager');
-    await this.chatMemoryManager.addMessage({
-      user_id: String(message.author.id),
-      username: message.author.username,
-      content: message.content,
-      timestamp: new Date().toISOString(),
-      is_bot: false
-    });
-    logger.debug({ messageContent: message.content }, 'Message added to memory');
+    // Enhanced trigger check to include replies to bot messages
+    const isReplyToBot = message.reference &&
+      message.reference.messageId &&
+      (await message.channel.messages.fetch(message.reference.messageId))?.author.id === this.botUserId;
 
-    // Check if we should respond
-    const isMentioned = message.mentions.users.has(this.botUserId || '') 
-      || message.content.toLowerCase().includes('quest boo') 
+    // Modified trigger check to include replies
+    const isMentioned = message.mentions.users.has(this.botUserId || '')
+      || message.content.toLowerCase().includes('quest boo')
       || message.content.toLowerCase().includes('quest');
 
+    // Small random chance to respond without mention
     const randomTrigger = Math.random() < 0.005;
-    
+
     logger.debug({
       isMentioned,
+      isReplyToBot,
       randomTrigger,
       content: message.content
     }, 'Checking response triggers');
 
-    if (!isMentioned && !randomTrigger) {
-      logger.debug('No trigger for response, skipping');
+    // Only store memory if the bot is triggered
+    if (isMentioned || isReplyToBot || randomTrigger) {
+      logger.info('Adding user message to memory manager (user triggered the bot)');
+      await this.chatMemoryManager.addMessage({
+        user_id: String(message.author.id),
+        username: message.author.username,
+        content: message.content,
+        timestamp: new Date().toISOString(),
+        is_bot: false
+      });
+      logger.debug({ messageContent: message.content }, 'Message added to memory');
+    } else {
+      logger.debug('No trigger for response, skipping memory storage');
       return;
     }
 
@@ -98,7 +106,7 @@ export class chatbotModule {
     const memoryContext = await queryAllMemories(message.content, message.author.id);
     logger.debug({ memoryContext }, 'Retrieved memory context');
 
-    // Get channel messages context
+    // Fetch recent channel messages
     logger.info('Fetching recent channel messages');
     const lastMessages = await message.channel.messages.fetch({ limit: 6 });
     const sorted = Array.from(lastMessages.values())
@@ -108,8 +116,8 @@ export class chatbotModule {
 
     logger.debug({ messageCount: sorted.length }, 'Retrieved recent messages');
 
-    const contextText = sorted.length > 0 
-      ? "\nRecent Channel History:\n" + sorted.map(msg => 
+    const contextText = sorted.length > 0
+      ? "\nRecent Channel History:\n" + sorted.map(msg =>
           `${msg.member?.displayName || msg.author.username}: ${msg.content}`
         ).join('\n')
       : "\nNo recent messages in channel.";
@@ -130,8 +138,8 @@ export class chatbotModule {
         ).join('\n')
       : "\nNo chat history in memory yet.";
 
-    const channelName = message.channel.isDMBased() 
-      ? 'Direct Message' 
+    const channelName = message.channel.isDMBased()
+      ? 'Direct Message'
       : `#${(message.channel as TextChannel).name}`;
 
     const additionalContext = `Channel: ${channelName}${contextText}${chatHistoryText}`;
@@ -158,7 +166,7 @@ export class chatbotModule {
       })) as Anthropic.Messages.MessageParam[]
     });
 
-    logger.debug({ 
+    logger.debug({
       response: msg,
       tokens: msg.usage
     }, 'Received response from Anthropic API');
@@ -185,18 +193,6 @@ export class chatbotModule {
     }
 
     logger.info('Sending response to Discord channel');
-    // Check if the message is a reply and if it's replying to our bot
-    const isReplyToBot = message.reference && 
-      message.reference.messageId && 
-      (await message.channel.messages.fetch(message.reference.messageId))?.author.id === this.botUserId;
-
-    logger.debug({ 
-      isReply: !!message.reference,
-      isReplyToBot,
-      referenceMessageId: message.reference?.messageId
-    }, 'Checking message reply status');
-
-    // Send the response, using reply if the original message was a reply to the bot
     if (isReplyToBot) {
       logger.info('Sending response as reply to user\'s message');
       await message.reply(assistantReply);

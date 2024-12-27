@@ -159,7 +159,7 @@ async function addMemoryToMem0(params: {
 }
 
 export async function sendMemoryEmbed(title: string, result: any, client: Client) {
-  const CHANNEL_ID = "1306860990591406080";
+  const CHANNEL_ID = "1306860990591406080"; //Channel where the bot's memories get posted
   const channel = client.channels.cache.get(CHANNEL_ID) as TextChannel;
   if (!channel) return;
 
@@ -279,7 +279,7 @@ export async function queryAllMemories(message: string, userId?: string): Promis
 
     // Add world knowledge section
     if (worldData.memories.length > 0 || worldData.relations.length > 0) {
-      sections.push("## World Knowledge Memories:");
+      sections.push("### World Knowledge Memories:");
       worldData.memories.forEach(m => sections.push(`• ${formatMemory(m)}`));
       
       if (worldData.relations.length > 0) {
@@ -294,7 +294,7 @@ export async function queryAllMemories(message: string, userId?: string): Promis
 
     // Add self knowledge section
     if (selfData.memories.length > 0 || selfData.relations.length > 0) {
-      sections.push("\n## Self Knowledge Memories:");
+      sections.push("\n### Self Knowledge Memories:");
       selfData.memories.forEach(m => sections.push(`• ${formatMemory(m)}`));
       
       if (selfData.relations.length > 0) {
@@ -309,7 +309,7 @@ export async function queryAllMemories(message: string, userId?: string): Promis
 
     // Add user knowledge section
     if (userData.memories.length > 0 || userData.relations.length > 0) {
-      sections.push("\n## User Knowledge Memories:");
+      sections.push("\n### User Specific Knowledge Memories:");
       userData.memories.forEach(m => sections.push(`• ${formatMemory(m)}`));
       
       if (userData.relations.length > 0) {
