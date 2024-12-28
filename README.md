@@ -1,4 +1,4 @@
-# 🤖 Quest Boo - Your AI-Powered Discord Companion
+# 🤖 Hearth - Your AI Discord Community Keeper
 
 <div align="center">
 
@@ -9,6 +9,8 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 </div>
+
+Your discord is your home. Hearth is the AI that keeps your community warm!
 
 ## 🌟 Features
 
@@ -27,6 +29,7 @@
 
 ### Installation
 
+1. Setting up the codebase
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/quest-boo-discord-bot.git
@@ -42,13 +45,19 @@ cp .env.example .env
 # Edit .env with your Discord token and other settings
 ```
 
-You MUST set up a supabase table with the database.sql file for the bot to work! Simply copy and paste the contents of database.sql into your supabase database's SQL Editor.
+2. Setting up Supabase:
+You **MUST** set up a supabase table with the database.sql file for the bot to work! Simply copy and paste the contents of database.sql into your supabase database's SQL Editor.
 
 Then, go to Storage, and create two PUBLIC buckets: 
 - good_images
 - bad_images
 
-Now you can run the bot!
+3. Setting up the memory server
+Use https://github.com/kingbootoshi/cloud-memories to set up a memory server. Whatever API your server is (if not localhost) set that in the config chatbot.yaml file!
+
+4. Configure your AI's name and personality in the config folder. Check out chatbot, imageGen, and summary .yaml files!
+
+Once your pleased with your setup, now you can run the bot!
 
 ### Running the Bot
 

@@ -4,7 +4,9 @@ import yaml from 'js-yaml';
 
 export interface ChatbotConfig {
   enabled: boolean;
-  openRouterModel: string;   
+  openRouterModel: string;      // Main chat model
+  memoryExtractionModel: string; // Model for memory extraction
+  memorySummaryModel: string;    // Model for memory summarization
   botName: string;           // Original non-normalized name
   personality: string;       
   discordId: string;        
@@ -30,7 +32,9 @@ export function loadChatbotConfig(nameNormalizer: (name: string) => string): Cha
 
   const finalConfig: ChatbotConfig = {
     enabled,
-    openRouterModel: raw.openRouterModel || 'openai/gpt-4o',
+    openRouterModel: raw.openRouterModel || 'deepseek/deepseek-chat',
+    memoryExtractionModel: raw.memoryExtractionModel || 'anthropic/claude-3-sonnet',
+    memorySummaryModel: raw.memorySummaryModel || 'anthropic/claude-3-haiku',
     botName: rawName,
     normalizedBotName: normalizedName,
     personality: raw.personality || 'This is my personality!',

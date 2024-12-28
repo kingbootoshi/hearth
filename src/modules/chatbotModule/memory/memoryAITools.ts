@@ -99,7 +99,7 @@ export async function extractChatKnowledge(chat_history: any[]): Promise<any> {
   ];
 
   const response = await openai.chat.completions.create({
-    model: chatbotConfig.openRouterModel,
+    model: chatbotConfig.memoryExtractionModel,
     messages,
     tools,
     tool_choice: "auto",
@@ -165,7 +165,7 @@ export async function condenseSummaries(summaries: string[], summary_type: strin
 ];
 
   const response = await openai.chat.completions.create({
-    model: chatbotConfig.openRouterModel,
+    model: chatbotConfig.memorySummaryModel,
     messages,
     tools,
     tool_choice: "auto",

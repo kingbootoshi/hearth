@@ -16,7 +16,7 @@ export class ChatMemoryManager {
   private max_messages: number;
   private client: Client;
 
-  constructor(client: Client, max_messages: number = 5) {
+  constructor(client: Client, max_messages: number = 30) {
     this.client = client;
     this.max_messages = max_messages;
   }
@@ -56,6 +56,8 @@ export class ChatMemoryManager {
   }
 
   async processChatHistory(): Promise<{extracted_knowledge: any}> {
+
+    logger.info('Processing chat history');
     // Load entire current chat_history
     const current_history = await this.getAllMessages();
     const messages_to_archive = current_history.slice(0, current_history.length - 2);
@@ -67,6 +69,7 @@ export class ChatMemoryManager {
     // Extract knowledge
     const { extractChatKnowledge } = await import('./memoryAITools');
     const extracted_knowledge = await extractChatKnowledge(current_history);
+    logger.debug({ extracted_knowledge }, "Extracted knowledge");
 
     // Store extracted knowledge in mem0 and database
     await this.saveExtractedKnowledge(extracted_knowledge);

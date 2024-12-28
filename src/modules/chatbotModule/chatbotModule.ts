@@ -6,6 +6,7 @@ import { chatbotConfig } from '../../config';
 import { ChatMemoryManager } from './memory/chatMemoryManager';
 import { queryAllMemories } from './memory/memoryProcessor';
 import { Logger } from './logger';
+import { supabase } from '../../utils/supabase/client';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -14,6 +15,15 @@ const logger = pino({
   },
   timestamp: pino.stdTimeFunctions.isoTime,
 });
+
+// Add this function to format chat history into OpenAI messages
+async function formatChatHistoryToMessages(messages: any[]): Promise<ChatCompletionMessageParam[]> {
+  // Convert chat history entries to OpenAI message format
+  return messages.map(msg => ({
+    role: msg.is_bot ? 'assistant' : 'user',
+    content: msg.content
+  }));
+}
 
 export class ChatbotModule {
   private client: Client;
@@ -92,24 +102,27 @@ export class ChatbotModule {
     await message.channel.sendTyping();
     const memoryContext = await queryAllMemories(message.content, message.author.id);
 
-    const lastMessages = await message.channel.messages.fetch({ limit: 6 });
-    const sorted = Array.from(lastMessages.values())
-      .filter(m => m.id !== message.id)
-      .sort((a, b) => a.createdTimestamp - b.createdTimestamp)
-      .slice(0, 5);
+    // Get chat history from Supabase, excluding the current message
+    const { data: chatHistory } = await supabase
+      .from('chat_history')
+      .select('*')
+      .lt('timestamp', new Date().toISOString()) // Only get messages before current one
+      .order('timestamp', { ascending: true });
 
-    let contextText = '';
-    if (sorted.length > 0) {
-      contextText = "\nRecent Channel History:\n" + sorted.map(m =>
-        `${m.member?.displayName || m.author.username}: ${m.content}`
-      ).join('\n');
-    }
+    // Format chat history into messages array
+    const historyMessages = await formatChatHistoryToMessages(chatHistory || []);
 
     const summaries = await this.chatMemoryManager.formatRecentSummariesForPrompt();
     const allMessages = await this.chatMemoryManager.getAllMessages();
     const chatHistoryText = allMessages.length > 0
       ? "\nChat History in Memory:\n" + allMessages.map(msg =>
-        `${msg.username}: ${msg.content}`
+        `[${new Date(msg.timestamp).toLocaleString('en-US', {
+          hour: 'numeric',
+          minute: 'numeric',
+          second: 'numeric',
+          hour12: true,
+          timeZone: 'UTC'
+        })} UTC] ${msg.username}: ${msg.content}`
       ).join('\n')
       : '';
 
@@ -117,7 +130,7 @@ export class ChatbotModule {
       ? 'Direct Message'
       : `#${(message.channel as TextChannel).name}`;
 
-    const addContext = `Channel: ${channelName}${contextText}${chatHistoryText}`;
+    const addContext = `Channel: ${channelName}${chatHistoryText}`;
 
     // Prepare final prompt
     let finalPrompt = chatbotConfig.personality;
@@ -125,9 +138,12 @@ export class ChatbotModule {
     finalPrompt = finalPrompt.replace('{{MEMORIES_HERE}}', memoryContext);
     finalPrompt = finalPrompt.replace('{{ADDITIONAL_CONTEXT_HERE}}', addContext);
 
+    // Construct messages array with system prompt first, chat history in middle,
+    // and current user message last
     const messages: ChatCompletionMessageParam[] = [
       { role: 'system', content: finalPrompt },
-      { role: 'user', content: message.content }
+      ...historyMessages,
+      { role: 'user', content: `${message.member?.displayName || message.author.username}: ${message.content}` }
     ];
 
     const result = await this.openai.chat.completions.create({

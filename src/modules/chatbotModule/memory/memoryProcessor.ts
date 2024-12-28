@@ -91,12 +91,19 @@ export async function storeKnowledgeInMem0(extracted_knowledge: any, client: Cli
 
 /**
  * Prepares memory strings for storage by combining them into a single string
- * @param content array of content strings
+ * @param content array of memory objects or strings
  * @returns single combined string with memories separated by newlines
  */
-function formatForMem0(content: string[]): string {
+function formatForMem0(content: (string | { memory: string })[]): string {
   // Join all memories with newlines into a single string
-  return content.map(c => c.trim()).join('\n');
+  logger.debug({ content }, "Formatting memory content");
+  return content
+    .map(c => {
+      // Handle both string and object formats
+      const memoryText = typeof c === 'string' ? c : c.memory;
+      return memoryText.trim();
+    })
+    .join('\n');
 }
 
 /**
@@ -221,8 +228,6 @@ export async function sendMemoryEmbed(title: string, result: any, client: Client
 
   if (hasAddedEntities) {
     let relationsText = "";
-    // added_entities is an array of arrays
-    // each sub-array can contain multiple relations
     const addedEntities = result.relations.added_entities;
     for (const relationGroup of addedEntities) {
       for (const rel of relationGroup) {
@@ -234,20 +239,22 @@ export async function sendMemoryEmbed(title: string, result: any, client: Client
     }
 
     if (relationsText.trim().length > 0) {
-      embed.addFields({ name: "����� Relations", value: relationsText });
+      embed.addFields({ name: "🔗 Relations", value: relationsText });
     }
   }
 
-  // Set thumbnail based on type, using user avatar for user knowledge
+  // Fix: Update thumbnail setting logic
   if (title.includes("General Knowledge")) {
     embed.setThumbnail("https://cdn.discordapp.com/attachments/1128943804825739347/1306860603117146133/Enchanted_Book.gif");
   } else if (title.includes("User Knowledge") && user) {
     embed.setThumbnail(user.displayAvatarURL({ size: 256 }));
   } else if (title.includes("Self-Knowledge")) {
-    // Use bot's avatar instead of hardcoded image
-    const bot = client.user;
-    if (bot) {
-      embed.setThumbnail(bot.displayAvatarURL({ size: 256 }));
+    // Ensure we get the bot's user object and set its avatar
+    if (client.user) {
+      logger.debug('Setting bot avatar as thumbnail for self-knowledge');
+      embed.setThumbnail(client.user.displayAvatarURL({ size: 256 }));
+    } else {
+      logger.warn('Client user object not available for setting thumbnail');
     }
   }
 

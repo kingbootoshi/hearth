@@ -65,4 +65,4 @@ randomGenSystemPrompt: |
     {"randomPrompt" : "random prompt"}
 
 # The LORA model route from HuggingFace
-loraModelRoute: "Bootoshi/booLorav1"
+loraModelPath: "Bootoshi/booLorav1"
