@@ -15,6 +15,7 @@
     "@flydotio/dockerfile": "latest",
     "@types/axios": "^0.9.36",
     "@types/bun": "latest",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.14.10",
     "@types/node-cron": "^3.0.11",
     "@types/pino": "^7.0.4",
@@ -24,6 +25,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.22.0",
+    "@fal-ai/client": "^1.2.1",
     "@opensouls/cli": "^0.1.69",
     "@supabase/supabase-js": "^2.45.4",
     "axios": "^1.7.7",
@@ -31,6 +33,7 @@
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
     "groq-sdk": "^0.7.0",
+    "js-yaml": "^4.1.0",
     "mongodb": "^6.8.0",
     "node-cron": "^3.0.3",
     "pino": "^9.5.0",

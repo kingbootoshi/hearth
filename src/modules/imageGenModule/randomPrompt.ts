@@ -1,55 +1,49 @@
 //randomPrompt.ts
-import Groq from 'groq-sdk';
+import OpenAI from 'openai';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { imageGenConfig } from '../../config';
+import pino from 'pino';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  formatters: {
+    level: (label) => ({ level: label.toUpperCase() }),
+  },
+  timestamp: pino.stdTimeFunctions.isoTime,
+});
+
+// Initialize OpenAI client with OpenRouter configuration
+const openai = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY || '',
+  defaultHeaders: {
+    'HTTP-Referer': process.env.OUR_SITE_URL || 'https://questboo.com',
+    'X-Title': 'QuestBoo Discord Bot'
+  }
+});
 
 export async function randomPrompt(): Promise<string> {
+  logger.info('Generating random image prompt with OpenRouter');
+
   try {
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content: `You are modeling the mind of "Quest Boo", the charming duck guardian of the Bitcoin Boos story. Embody the character and interact with everyone in character.
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: 'system',
+        content: imageGenConfig.randomGenSystemPrompt
+      }
+    ];
 
-You are the image generation module of Quest Boo. You have the ability to generate beautiful Boo specific images based on a simple user prompt. You have functionality to automatically expand on prompts users input because users typically use short descriptions but the AI image model needs a vivid description.
-
-# PERSONALITY
-- Quest Boo is the right winged duck of the Boos. One of the kingdom's strongest warriors, been through MANY crazy adventures, and now resides as the caretaker of the Boo Kingdom
-- crazy
-- very outgoing and talkative
-- ENTP
-
-# SPEAKING STYLE
-- Quest Boo replies are short text messages.
-- Quest Boo is expressive
-
-# BOO LORE
-Bitcoin Boos are a collection of 101 cute pixel characters named "Boos" that live on the bitcoin blockchain. These Boos live in "The Boo Kingdom," a magical wonderland full of vibrant pixel art and fascinating Boos with their unique personalities and stories. BOOS ARE NOT GHOSTS!
-
-The world the Boos live in is harsh, dangerous, cruel, and extremely gory. While we are cute, the world around us is not.
-
-Current goal:
-It's your turn to generate an image! Suggest a random image 
-
-When prompting Boo images, keep them relatively open. Don't name Boos, just say "a boo" or "boos"
-
-Output your image suggestion in the following JSON format:
-
-{"randomPrompt" : "random prompt"}`
-        }
-      ],
-      model: 'llama-3.1-70b-versatile',
+    const result = await openai.chat.completions.create({
+      model: imageGenConfig.openRouterModel,
+      messages,
       temperature: 1,
       max_tokens: 1024,
-      top_p: 1,
-      stream: false,
-      response_format: {
-        type: 'json_object'
-      },
-      stop: null
+      response_format: { type: 'json_object' }
     });
 
-    const content = chatCompletion.choices[0]?.message?.content;
+    logger.debug({ response: result }, 'Received response from OpenRouter');
+
+    const content = result.choices[0]?.message?.content;
     if (!content) {
       throw new Error('No content in Quest Boo response');
     }
@@ -59,10 +53,11 @@ Output your image suggestion in the following JSON format:
       throw new Error('JSON does not contain "randomPrompt" field');
     }
 
+    logger.info('Successfully generated random prompt');
     return parsed.randomPrompt.trim();
 
   } catch (error) {
-    console.error('Error in randomPrompt:', error);
+    logger.error({ err: error }, 'Error generating random prompt');
     throw error;
   }
 }

@@ -1,57 +1,55 @@
-import Anthropic from "@anthropic-ai/sdk";
-import dotenv from 'dotenv';
+import OpenAI from 'openai';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { summaryConfig } from '../../config';
+import pino from 'pino';
 
-dotenv.config();
+const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  formatters: {
+    level: (label) => ({ level: label.toUpperCase() }),
+  },
+  timestamp: pino.stdTimeFunctions.isoTime,
+});
 
-const anthropic = new Anthropic({
-  apiKey: process.env["ANTHROPIC_API_KEY"] || "my_api_key",
+// Initialize OpenAI client with OpenRouter configuration
+const openai = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY || '',
 });
 
 export async function createMessage(inputText: string): Promise<string> {
-  const msg = await anthropic.messages.create({
-    model: "claude-3-5-haiku-20241022",
-    max_tokens: 1000,
-    temperature: 0,
-    system: `
-    ## ROLE
-    You are Quest Boo, the anthropomorphic duck summarizer of the DEGEN CAVE, an alpha channel in a Bitcoin Ordinals focused group.
-    
-    ## TASK
-    Summarize chat logs from the DEGEN CAVE, focusing on potentially profitable opportunities, market trends, notable projects, and relevant links. ALWAYS INCLUDE LINKS MENTIONED - THIS IS CRITICAL!
-    
-    ## !! GUIDELINES !!
-    
-    - Prioritize information that could lead to financial opportunities
-    - Include ALL relevant links ONLY shown from the chat logs! If a link is not in the chat logs, do NOT add it.
-    - Ignore greetings, personal activities, or off-topic conversations
-    - Assume linked Twitter posts are relevant; mention them without describing content
-    - Keep the summary concise yet informative
-    
-    ## OUTPUT FORMAT
-    Start your summary with: {insert funny duck quip here} Here's the hourly summary, degens!\n\n"
-    Then provide a single, concise list that combines all relevant information with links!
-    
-    - Use bullet points for each item
-    - Bold key terms or project names
-    - Include links using markdown format
-    - ONLY USE LINKS DIRECTLY FOUND IN THE CHATLOG"
-    `,
-    messages: [
-      {
-        "role": "user",
-        "content": [
-          {
-            "type": "text",
-            "text": inputText
-          }
-        ]
-      }
-    ]
-  });
-    if (msg.content[0].type === 'text') {
-      console.log(msg.content[0].text);
-      return msg.content[0].text;
+  logger.info('Creating summary message with OpenRouter');
+  
+  const messages: ChatCompletionMessageParam[] = [
+    {
+      role: 'system',
+      content: summaryConfig.summarizerSystemPrompt
+    },
+    {
+      role: 'user',
+      content: inputText
+    }
+  ];
+
+  try {
+    const result = await openai.chat.completions.create({
+      model: summaryConfig.openRouterModel,
+      messages,
+      temperature: 0,
+      max_tokens: 1000
+    });
+
+    logger.debug({ response: result }, 'Received response from OpenRouter');
+
+    if (result.choices && result.choices.length > 0) {
+      const summary = result.choices[0].message?.content?.trim() || '';
+      logger.info('Successfully generated summary');
+      return summary;
     }
 
-    throw new Error('Unexpected response format');
+    throw new Error('No valid response content from OpenRouter');
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to generate summary with OpenRouter');
+    throw error;
+  }
 }

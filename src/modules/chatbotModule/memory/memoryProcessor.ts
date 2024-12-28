@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import { Client, EmbedBuilder, TextChannel } from 'discord.js';
-import { createModuleLogger } from '../../utils/logger';
+import { createModuleLogger } from '../../../utils/logger';
 
 const logger = createModuleLogger('memoryProcessor');
 

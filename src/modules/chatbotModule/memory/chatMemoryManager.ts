@@ -1,4 +1,4 @@
-import { supabase } from '../../utils/supabase/client';
+import { supabase } from '../../../utils/supabase/client';
 import { EmbedBuilder, Client, TextChannel } from 'discord.js';
 import pino from 'pino';
 
@@ -65,7 +65,7 @@ export class ChatMemoryManager {
 
     // After archiving, we have last two messages still in chat_history
     // Extract knowledge
-    const { extractChatKnowledge } = await import('./openAIApi');
+    const { extractChatKnowledge } = await import('./memoryAITools');
     const extracted_knowledge = await extractChatKnowledge(current_history);
 
     // Store extracted knowledge in mem0 and database

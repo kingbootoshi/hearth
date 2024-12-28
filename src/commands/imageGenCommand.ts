@@ -39,28 +39,20 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       "Imagining your prompt, I'll post it in the channel when it's done!"
     );
 
-    const aiAssistantInfo = '';
-    const enhancedPrompt = await enhancePrompt(userPrompt, aiAssistantInfo);
+    const enhancedPrompt = await enhancePrompt(userPrompt);
 
-    const jobId = await submitImageJob(enhancedPrompt);
-
-    const base64Image = await getGeneratedImage(jobId);
-    const imageBuffer = Buffer.from(base64Image, 'base64');
-    const attachment = new AttachmentBuilder(imageBuffer, { name: 'image.png' });
-
-    await interaction.editReply(
-      `Finished imagining your prompt! ${interaction.user}`
-    );
-
+    const imageUrl = await submitImageJob(enhancedPrompt);
+    
+    // Create the embed with the image URL
     const embed = new EmbedBuilder()
       .setColor(getRandomColor())
-      .setTitle('Boo art imagined!')
+      .setTitle('Art imagined!')
       .setDescription(`/imagine ${userPrompt}`)
-      .setImage('attachment://image.png')
+      .setImage(imageUrl)
       .setFooter({
         text: 'Please rate this image 👍 or 👎 to give feedback so I can improve!',
         iconURL: interaction.user.avatarURL() || undefined,
-      }) // Added consistent footer with user's PFP and feedback prompt
+      })
       .setTimestamp();
 
     const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -78,7 +70,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const sentMessage = await interaction.channel?.send({
       content: `Finished imagining your prompt! ${interaction.user}`,
       embeds: [embed],
-      files: [attachment],
       components: [buttons],
     });
 
@@ -112,7 +103,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           console.log(`Feedback is ${feedback}`);
 
           // Save the data to Supabase
-          await saveImageData(userPrompt, enhancedPrompt, imageBuffer, feedback);
+          await saveImageData(userPrompt, enhancedPrompt, imageUrl, feedback);
 
           // Remove reactions from the message
           await sentMessage.reactions.removeAll();
@@ -197,7 +188,7 @@ export async function handleButtonInteraction(
 
       // Set content, title, and description for "Random gen"
       content = `I finished generating a random image! ${interaction.user}`;
-      title = 'Random Boo art imagined!';
+      title = 'Random art imagined!';
       description = `Prompt: ${prompt}`;
     } else {
       // Handle unknown actions
@@ -212,24 +203,17 @@ export async function handleButtonInteraction(
     await interaction.editReply({ content: actionReply });
 
     // Enhance the prompt using AI assistant
-    const enhancedPrompt = await enhancePrompt(prompt, '');
+    const enhancedPrompt = await enhancePrompt(prompt);
 
     // Submit the image generation job
-    const jobId = await submitImageJob(enhancedPrompt);
-
-    // Retrieve the generated image
-    const base64Image = await getGeneratedImage(jobId);
-    const imageBuffer = Buffer.from(base64Image, 'base64'); // Convert base64 to Buffer
-    const attachment = new AttachmentBuilder(imageBuffer, {
-      name: 'image.png',
-    }); // Create attachment
+    const imageUrl = await submitImageJob(enhancedPrompt);
 
     // Create the embed with the updated title and description
     const embed = new EmbedBuilder()
       .setTitle(title)
       .setColor(getRandomColor()) // Set a random color for the embed
       .setDescription(description)
-      .setImage('attachment://image.png')
+      .setImage(imageUrl)
       .setFooter({
         text: interaction.user.username,
         iconURL: interaction.user.avatarURL() || undefined,
@@ -248,11 +232,10 @@ export async function handleButtonInteraction(
         .setStyle(ButtonStyle.Secondary)
     );
 
-    // Send the message with the generated image
+    // Send the message in the public channel with the updated content and embed
     const sentMessage = await interaction.channel?.send({
       content: content,
       embeds: [embed],
-      files: [attachment],
       components: [buttons],
     });
 
@@ -286,7 +269,7 @@ export async function handleButtonInteraction(
           console.log(`Feedback is ${feedback}`);
 
           // Save the data to Supabase
-          await saveImageData(prompt, enhancedPrompt, imageBuffer, feedback);
+          await saveImageData(prompt, enhancedPrompt, imageUrl, feedback);
 
           // Remove reactions from the message
           await sentMessage.reactions.removeAll();

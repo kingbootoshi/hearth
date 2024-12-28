@@ -1,6 +1,6 @@
-import { supabase } from '../../utils/supabase/client';
-import { condenseSummaries } from './openAIApi';
-import { createModuleLogger } from '../../utils/logger';
+import { supabase } from '../../../utils/supabase/client';
+import { condenseSummaries } from './memoryAITools';
+import { createModuleLogger } from '../../../utils/logger';
 const logger = createModuleLogger('summaryManager');
 
 // Run the 3-2-1 pipeline:

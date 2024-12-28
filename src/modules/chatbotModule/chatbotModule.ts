@@ -1,214 +1,163 @@
 import { Client, Message, TextChannel } from 'discord.js';
-import { ChatMemoryManager } from './chatMemoryManager';
-import { getSystemPrompt } from './config';
-import { supabase } from '../../utils/supabase/client';
-import Anthropic from '@anthropic-ai/sdk';
-import { Logger } from './logger';
-import { queryAllMemories } from './memoryProcessor';
 import pino from 'pino';
+import OpenAI from 'openai';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { chatbotConfig } from '../../config';
+import { ChatMemoryManager } from './memory/chatMemoryManager';
+import { queryAllMemories } from './memory/memoryProcessor';
+import { Logger } from './logger';
 
-// Initialize PINO logger
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
-  // Using basic formatting instead of transport for Bun compatibility
   formatters: {
-    level: (label) => {
-      return { level: label.toUpperCase() };
-    },
+    level: (label) => ({ level: label.toUpperCase() }),
   },
   timestamp: pino.stdTimeFunctions.isoTime,
 });
 
-export class chatbotModule {
+export class ChatbotModule {
   private client: Client;
-  private chatMemoryManager: ChatMemoryManager;
   private botUserId: string | undefined;
-  private anthropic: Anthropic;
   private logger: Logger;
+  private openai: OpenAI;
+  private chatMemoryManager: ChatMemoryManager;
 
   constructor(client: Client) {
-    logger.info('Initializing chatbotModule');
+    logger.info('Constructing ChatbotModule (separate file).');
     this.client = client;
-    this.chatMemoryManager = new ChatMemoryManager(client, 30);
-    this.anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY || '',
-    });
     this.logger = new Logger();
-    logger.info('chatbotModule initialized successfully');
+    this.chatMemoryManager = new ChatMemoryManager(client, 30);
+
+    this.openai = new OpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: process.env.OPENROUTER_API_KEY || '',
+
+    });
   }
 
   public async start(readyClient: any): Promise<void> {
-    logger.info('Starting chatbotModule');
-    this.botUserId = readyClient.user.id;
+    logger.info('Starting separate ChatbotModule');
+    this.botUserId = chatbotConfig.discordId || readyClient.user.id;
     logger.info({ botUserId: this.botUserId }, 'Bot user ID set');
   }
 
   public async stop(): Promise<void> {
-    logger.info('Stopping chatbotModule');
-    // Cleanup if needed
+    logger.info('Stopping separate ChatbotModule');
   }
 
   public async handleMessage(message: Message): Promise<void> {
-    logger.info({
-      userId: message.author.id,
-      username: message.author.username,
-      channelId: message.channel.id,
-      messageId: message.id
-    }, 'Received new message');
-
-    // Ignore messages from bots
-    if (message.author.bot) {
-      logger.debug('Ignoring bot message');
+    if (!chatbotConfig.enabled) {
       return;
     }
 
-    // Enhanced trigger check to include replies to bot messages
-    const isReplyToBot = message.reference &&
-      message.reference.messageId &&
-      (await message.channel.messages.fetch(message.reference.messageId))?.author.id === this.botUserId;
+    // Basic logging
+    logger.info({ 
+      userId: message.author.id, 
+      content: message.content 
+    }, 'handleMessage called in ChatbotModule');
 
-    // Modified trigger check to include replies
+    if (message.author.bot) {
+      logger.debug('Message from bot, ignoring');
+      return;
+    }
+
+    let isReplyToBot = false;
+    if (message.reference?.messageId) {
+      const refMsg = await message.channel.messages.fetch(message.reference.messageId);
+      if (refMsg.author.id === this.botUserId) {
+        isReplyToBot = true;
+      }
+    }
+
+    const botNameLower = chatbotConfig.botName.toLowerCase();
     const isMentioned = message.mentions.users.has(this.botUserId || '')
-      || message.content.toLowerCase().includes('quest boo')
-      || message.content.toLowerCase().includes('quest');
+      || message.content.toLowerCase().includes(botNameLower);
 
-    // Small random chance to respond without mention
     const randomTrigger = Math.random() < 0.005;
 
-    logger.debug({
-      isMentioned,
-      isReplyToBot,
-      randomTrigger,
-      content: message.content
-    }, 'Checking response triggers');
-
-    // Only store memory if the bot is triggered
-    if (isMentioned || isReplyToBot || randomTrigger) {
-      logger.info('Adding user message to memory manager (user triggered the bot)');
-      await this.chatMemoryManager.addMessage({
-        user_id: String(message.author.id),
-        username: message.author.username,
-        content: message.content,
-        timestamp: new Date().toISOString(),
-        is_bot: false
-      });
-      logger.debug({ messageContent: message.content }, 'Message added to memory');
-    } else {
-      logger.debug('No trigger for response, skipping memory storage');
+    if (!(isMentioned || isReplyToBot || randomTrigger)) {
       return;
     }
 
-    logger.info('Bot triggered to respond, starting response generation');
+    // Store user message
+    await this.chatMemoryManager.addMessage({
+      user_id: message.author.id,
+      username: message.author.username,
+      content: message.content,
+      timestamp: new Date().toISOString(),
+      is_bot: false
+    });
+
+    // Build up context
     await message.channel.sendTyping();
-
-    // Query relevant memories
-    logger.info('Querying memories for context');
     const memoryContext = await queryAllMemories(message.content, message.author.id);
-    logger.debug({ memoryContext }, 'Retrieved memory context');
 
-    // Fetch recent channel messages
-    logger.info('Fetching recent channel messages');
     const lastMessages = await message.channel.messages.fetch({ limit: 6 });
     const sorted = Array.from(lastMessages.values())
-      .filter((m) => m.id !== message.id)
+      .filter(m => m.id !== message.id)
       .sort((a, b) => a.createdTimestamp - b.createdTimestamp)
       .slice(0, 5);
 
-    logger.debug({ messageCount: sorted.length }, 'Retrieved recent messages');
+    let contextText = '';
+    if (sorted.length > 0) {
+      contextText = "\nRecent Channel History:\n" + sorted.map(m =>
+        `${m.member?.displayName || m.author.username}: ${m.content}`
+      ).join('\n');
+    }
 
-    const contextText = sorted.length > 0
-      ? "\nRecent Channel History:\n" + sorted.map(msg =>
-          `${msg.member?.displayName || msg.author.username}: ${msg.content}`
-        ).join('\n')
-      : "\nNo recent messages in channel.";
-
-    // Get formatted summaries
-    logger.info('Retrieving memory summaries');
     const summaries = await this.chatMemoryManager.formatRecentSummariesForPrompt();
-    logger.debug({ summaries }, 'Retrieved formatted summaries');
-
-    // Get chat history
-    logger.info('Retrieving chat history');
-    const chatHistory = await this.chatMemoryManager.getAllMessages();
-    logger.debug({ messageCount: chatHistory.length }, 'Retrieved chat history');
-
-    const chatHistoryText = chatHistory.length > 0
-      ? "\nChat History in Memory:\n" + chatHistory.map(msg =>
-          `${msg.username}: ${msg.content}`
-        ).join('\n')
-      : "\nNo chat history in memory yet.";
+    const allMessages = await this.chatMemoryManager.getAllMessages();
+    const chatHistoryText = allMessages.length > 0
+      ? "\nChat History in Memory:\n" + allMessages.map(msg =>
+        `${msg.username}: ${msg.content}`
+      ).join('\n')
+      : '';
 
     const channelName = message.channel.isDMBased()
       ? 'Direct Message'
       : `#${(message.channel as TextChannel).name}`;
 
-    const additionalContext = `Channel: ${channelName}${contextText}${chatHistoryText}`;
+    const addContext = `Channel: ${channelName}${contextText}${chatHistoryText}`;
 
-    // Get system prompt with memories included
-    logger.info('Generating system prompt');
-    const systemPrompt = getSystemPrompt(summaries, memoryContext, additionalContext);
-    logger.debug({ systemPrompt }, 'Generated system prompt');
+    // Prepare final prompt
+    let finalPrompt = chatbotConfig.personality;
+    finalPrompt = finalPrompt.replace('{{SUMMARIES_HERE}}', summaries);
+    finalPrompt = finalPrompt.replace('{{MEMORIES_HERE}}', memoryContext);
+    finalPrompt = finalPrompt.replace('{{ADDITIONAL_CONTEXT_HERE}}', addContext);
 
-    const memoryWindow = [
+    const messages: ChatCompletionMessageParam[] = [
+      { role: 'system', content: finalPrompt },
       { role: 'user', content: message.content }
     ];
 
-    // Send to Anthropics with the constructed prompt
-    logger.info('Sending request to Anthropic API');
-    const msg = await this.anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+    const result = await this.openai.chat.completions.create({
+      model: chatbotConfig.openRouterModel,
+      messages,
       max_tokens: 1000,
-      temperature: 0.8,
-      system: systemPrompt,
-      messages: memoryWindow.map(m => ({
-        role: m.role,
-        content: m.content
-      })) as Anthropic.Messages.MessageParam[]
+      temperature: 0.8
     });
 
-    logger.debug({
-      response: msg,
-      tokens: msg.usage
-    }, 'Received response from Anthropic API');
+    this.logger.logApiCall(finalPrompt, messages, result);
 
-    // Log the API call
-    this.logger.logApiCall(
-      systemPrompt,
-      [
-        {
-          role: 'system',
-          content: `Channel Context:\nChannel: ${channelName}\n${contextText}\n\nChat History:\n${chatHistoryText}`
-        },
-        ...memoryWindow
-      ],
-      msg
-    );
-
-    let assistantReply = '';
-    if (msg.content && msg.content.length > 0 && msg.content[0].type === 'text') {
-      assistantReply = msg.content[0].text.trim();
+    let botReply = '';
+    if (result.choices && result.choices.length > 0) {
+      botReply = result.choices[0].message?.content || '';
     } else {
-      logger.warn('No valid response content from Anthropic API');
-      assistantReply = "Quack... I have nothing to say.";
+      botReply = "no answer from me right now...";
     }
 
-    logger.info('Sending response to Discord channel');
     if (isReplyToBot) {
-      logger.info('Sending response as reply to user\'s message');
-      await message.reply(assistantReply);
+      await message.reply(botReply);
     } else {
-      await message.channel.send(assistantReply);
+      await message.channel.send(botReply);
     }
 
-    // Store assistant response as a bot message in memory
-    logger.info('Storing bot response in memory');
     await this.chatMemoryManager.addMessage({
-      user_id: "bot",
-      username: "QuestBoo",
-      content: assistantReply,
+      user_id: 'bot',
+      username: chatbotConfig.botName,
+      content: botReply,
       timestamp: new Date().toISOString(),
       is_bot: true
     });
-    logger.debug('Bot response stored in memory');
   }
 }

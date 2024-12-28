@@ -1,12 +1,18 @@
 import { OpenAI } from "openai";
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions";
-import { createModuleLogger } from '../../utils/logger';
+import { createModuleLogger } from '../../../utils/logger';
+import { chatbotConfig } from '../../../config';
 
 const logger = createModuleLogger('openAIApi');
 
-// Initialize OpenAI client with API key from environment variables
+// Initialize OpenAI client with OpenRouter configuration
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY || '',
+  defaultHeaders: {
+    'HTTP-Referer': process.env.OUR_SITE_URL || 'https://questboo.com',
+    'X-Title': 'QuestBoo Discord Bot'
+  }
 });
 
 /**
@@ -115,7 +121,7 @@ Use your extract learnings function tool at all times - you will ONLY be given c
   ];
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: chatbotConfig.openRouterModel,
     messages,
     tools,
     tool_choice: "auto",
@@ -181,7 +187,7 @@ export async function condenseSummaries(summaries: string[], summary_type: strin
 ];
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: chatbotConfig.openRouterModel,
     messages,
     tools,
     tool_choice: "auto",
@@ -200,16 +206,14 @@ export async function condenseSummaries(summaries: string[], summary_type: strin
 }
 
 export async function callOpenAI(apiPayload: any) {
-  logger.info('Calling OpenAI API with payload');
+  logger.info('Calling OpenRouter API with payload');
   try {
-    logger.debug({ payload: apiPayload }, 'OpenAI API call payload data');
-
-    // ... existing code that calls external API ...
-
-    logger.info('OpenAI API call successful');
-    // ... existing code ...
+    logger.debug({ payload: apiPayload }, 'OpenRouter API call payload data');
+    const response = await openai.chat.completions.create(apiPayload);
+    logger.info('OpenRouter API call successful');
+    return response;
   } catch (error) {
-    logger.error({ err: error }, 'OpenAI API call failed');
+    logger.error({ err: error }, 'OpenRouter API call failed');
     throw error;
   }
 }

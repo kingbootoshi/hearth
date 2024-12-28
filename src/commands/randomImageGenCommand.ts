@@ -13,7 +13,7 @@ function getRandomColor(): number {
 // Define the /random command
 export const data = new SlashCommandBuilder()
   .setName('random')
-  .setDescription("Generate a random image based on Quest Boo's imagination.");
+  .setDescription("Generate a random image based my imagination.");
 
 // Execute the /random command
 export async function execute(
@@ -26,32 +26,25 @@ export async function execute(
   });
 
   try {
-    // Get a random prompt from Quest Boo
+    // Get a random prompt from the AI
     const userPrompt = await randomPrompt();
 
     // Optionally enhance the prompt
-    const enhancedPrompt = await enhancePrompt(userPrompt, '');
+    const enhancedPrompt = await enhancePrompt(userPrompt);
 
-    // Submit the image generation job
-    const jobId = await submitImageJob(enhancedPrompt);
-
-    // Convert the base64 image to a buffer
-    const base64Image = await getGeneratedImage(jobId);
-    const imageBuffer = Buffer.from(base64Image, 'base64');
-
-    // Create an attachment from the image buffer
-    const attachment = new AttachmentBuilder(imageBuffer, { name: 'image.png' });
+    // Submit the image generation job and get the URL directly
+    const imageUrl = await submitImageJob(enhancedPrompt);
 
     // Create the embed with the image and prompt
     const imageEmbed = new EmbedBuilder()
       .setTitle('Random Image')
-      .setColor(getRandomColor()) // Set a random color for the embed
+      .setColor(getRandomColor())
       .setDescription(`Prompt: ${userPrompt}`)
-      .setImage('attachment://image.png')
+      .setImage(imageUrl)
       .setFooter({
         text: 'Please rate this image 👍 or 👎 to give feedback so I can improve!',
         iconURL: interaction.user.avatarURL() || undefined,
-      }) // Added consistent footer with user's PFP and feedback prompt
+      })
       .setTimestamp();
 
     // Create the buttons
@@ -71,7 +64,6 @@ export async function execute(
       content: `I finished generating a random image! ${interaction.user}`,
       embeds: [imageEmbed],
       components: [buttons],
-      files: [attachment],
     });
 
     // Check if the message was sent successfully
@@ -103,8 +95,8 @@ export async function execute(
 
           console.log(`Feedback is ${feedback}`);
 
-          // Save the data to Supabase
-          await saveImageData(userPrompt, enhancedPrompt, imageBuffer, feedback);
+          // Save the data to Supabase with the image URL
+          await saveImageData(userPrompt, enhancedPrompt, imageUrl, feedback);
 
           // Remove reactions from the message
           await sentMessage.reactions.removeAll();
@@ -117,7 +109,7 @@ export async function execute(
 
           await sentMessage.edit({
             content: `${sentMessage.content}\n${feedbackMessage}`,
-          }); // Edited the original message to include feedback
+          });
         } catch (error) {
           console.error('Error in reaction collector:', error);
         }
@@ -176,7 +168,7 @@ export async function handleButtonInteraction(
 
       // Set content, title, and description for "Random gen"
       content = `I finished generating a random image! ${interaction.user}`;
-      title = 'Random Boo art imagined!';
+      title = 'Random art imagined!';
       description = `Prompt: ${prompt}`;
     } else {
       // Handle unknown actions
@@ -191,28 +183,21 @@ export async function handleButtonInteraction(
     await interaction.editReply({ content: actionReply });
 
     // Enhance the prompt using AI assistant
-    const enhancedPrompt = await enhancePrompt(prompt, '');
+    const enhancedPrompt = await enhancePrompt(prompt);
 
-    // Submit the image generation job
-    const jobId = await submitImageJob(enhancedPrompt);
-
-    // Retrieve the generated image
-    const base64Image = await getGeneratedImage(jobId);
-    const imageBuffer = Buffer.from(base64Image, 'base64'); // Convert base64 to Buffer
-    const attachment = new AttachmentBuilder(imageBuffer, {
-      name: 'image.png',
-    }); // Create attachment
+    // Submit the image generation job and get the URL directly
+    const imageUrl = await submitImageJob(enhancedPrompt);
 
     // Create the embed with the updated title and description
     const imageEmbed = new EmbedBuilder()
       .setTitle(title)
       .setColor(getRandomColor())
       .setDescription(description)
-      .setImage('attachment://image.png')
+      .setImage(imageUrl)
       .setFooter({
         text: 'Please rate this image 👍 or 👎 to give feedback so I can improve!',
         iconURL: interaction.user.avatarURL() || undefined,
-      }) // Updated footer to match the execute function
+      })
       .setTimestamp();
 
     // Reuse the buttons for further interactions
@@ -232,7 +217,6 @@ export async function handleButtonInteraction(
       content: content,
       embeds: [imageEmbed],
       components: [buttons],
-      files: [attachment],
     });
 
     // Check if the message was sent successfully
@@ -264,8 +248,8 @@ export async function handleButtonInteraction(
 
           console.log(`Feedback is ${feedback}`);
 
-          // Save the data to Supabase
-          await saveImageData(prompt, enhancedPrompt, imageBuffer, feedback);
+          // Save the data to Supabase with the image URL
+          await saveImageData(prompt, enhancedPrompt, imageUrl, feedback);
 
           // Remove reactions from the message
           await sentMessage.reactions.removeAll();
@@ -278,7 +262,7 @@ export async function handleButtonInteraction(
 
           await sentMessage.edit({
             content: `${sentMessage.content}\n${feedbackMessage}`,
-          }); // Edited the original message to include feedback
+          });
         } catch (error) {
           console.error('Error in reaction collector:', error);
         }

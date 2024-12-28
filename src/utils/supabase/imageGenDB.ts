@@ -3,60 +3,36 @@ import { Buffer } from 'buffer';
 
 /**
  * Saves image data and feedback to Supabase database and storage.
- * @param originalPrompt The original user prompt.
+ * @param userPrompt The original user prompt.
  * @param enhancedPrompt The AI-enhanced prompt.
- * @param imageBuffer The image data as a Buffer.
+ * @param imageUrl The image URL.
  * @param feedback User feedback ('good' or 'bad').
  */
 export async function saveImageData(
-  originalPrompt: string,
+  userPrompt: string,
   enhancedPrompt: string,
-  imageBuffer: Buffer,
-  feedback: string
+  imageUrl: string,
+  feedback: 'good' | 'bad'
 ): Promise<void> {
   try {
-    // Determine the storage bucket based on feedback
-    const bucketName = feedback === 'good' ? 'good_boo_images' : 'bad_boo_images';
-
-    // Generate a unique filename
-    const filename = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.png`;
-
-    // Save the image to Supabase Storage
-    const { data: storageData, error: storageError } = await supabase.storage
-      .from(bucketName)
-      .upload(filename, imageBuffer, {
-        contentType: 'image/png',
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (storageError) {
-      console.error('Error uploading image to Supabase Storage:', storageError);
-      return;
-    }
-
-    console.log('Image uploaded to Supabase Storage:', storageData);
-
-    // Get the public URL of the uploaded image
-    const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(filename);
-    const imageUrl = publicUrlData.publicUrl;
-
-    // Insert a new record into the 'image_feedback' table
-    const { data, error } = await supabase.from('image_feedback').insert([
-      {
-        original_prompt: originalPrompt,
-        enhanced_prompt: enhancedPrompt,
-        image_url: imageUrl,
-        feedback: feedback,
-      },
-    ]);
+    // Save the data to Supabase
+    const { error } = await supabase
+      .from('image_generations')
+      .insert([
+        {
+          user_prompt: userPrompt,
+          enhanced_prompt: enhancedPrompt,
+          image_url: imageUrl,
+          feedback: feedback,
+          created_at: new Date().toISOString()
+        }
+      ]);
 
     if (error) {
-      console.error('Error inserting record into Supabase Database:', error);
-    } else {
-      console.log('Record inserted into Supabase Database:', data);
+      throw error;
     }
   } catch (error) {
-    console.error('Error in saveImageData:', error);
+    console.error('Error saving image data:', error);
+    throw error;
   }
 }
