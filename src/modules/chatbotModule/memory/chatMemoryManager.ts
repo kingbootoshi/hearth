@@ -8,6 +8,7 @@ interface ChatMessage {
   content: string;
   timestamp: string; 
   is_bot: boolean;
+  images?: string[];
 }
 
 const logger = pino({ name: 'chatMemoryManager', level: 'debug' });
@@ -22,13 +23,30 @@ export class ChatMemoryManager {
   }
 
   async addMessage(messageData: ChatMessage): Promise<void|{extracted_knowledge: any}> {
-    // Insert the message into Supabase
-    await supabase.from('chat_history').insert(messageData);
-    const count = await this.getMessageCount();
-    if (count >= this.max_messages) {
-      // Trigger processing
-      const extracted = await this.processChatHistory();
-      return extracted;
+    try {
+      // Insert the message into Supabase
+      const { data, error } = await supabase.from('chat_history').insert(messageData);
+      
+      if (error) {
+        logger.error({ error, messageData }, 'Failed to insert message into chat history');
+        return;
+      }
+
+      logger.info({ 
+        userId: messageData.user_id,
+        username: messageData.username,
+        isBot: messageData.is_bot,
+        hasImages: messageData.images && messageData.images.length > 0
+      }, 'Successfully stored message in chat history');
+
+      const count = await this.getMessageCount();
+      if (count >= this.max_messages) {
+        // Trigger processing
+        const extracted = await this.processChatHistory();
+        return extracted;
+      }
+    } catch (error) {
+      logger.error({ error, messageData }, 'Error in addMessage');
     }
   }
 

@@ -2259,7 +2259,8 @@ CREATE TABLE public.chat_history (
     username text,
     content text,
     "timestamp" timestamp with time zone,
-    is_bot boolean
+    is_bot boolean,
+    images text[]
 );
 
 
@@ -2275,7 +2276,8 @@ CREATE TABLE public.chat_history_archive (
     username text,
     content text,
     "timestamp" timestamp with time zone,
-    is_bot boolean
+    is_bot boolean,
+    images text[]
 );
 
 
@@ -3496,6 +3498,20 @@ CREATE INDEX idx_chat_archive_timestamp ON public.chat_history_archive USING btr
 
 
 --
+-- Name: idx_chat_history_archive_images; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_chat_history_archive_images ON public.chat_history_archive USING gin (images);
+
+
+--
+-- Name: idx_chat_history_images; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_chat_history_images ON public.chat_history USING gin (images);
+
+
+--
 -- Name: idx_chat_history_timestamp; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -4054,7 +4070,7 @@ ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
 -- Name: objects Allow public access; Type: POLICY; Schema: storage; Owner: supabase_storage_admin
 --
 
-CREATE POLICY "Allow public access" ON storage.objects USING (((bucket_id = 'good_images'::text) OR (bucket_id = 'bad_images'::text)));
+CREATE POLICY "Allow public access" ON storage.objects USING (((bucket_id = 'good_boo_images'::text) OR (bucket_id = 'bad_boo_images'::text)));
 
 
 --
