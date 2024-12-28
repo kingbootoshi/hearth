@@ -1,12 +1,12 @@
 import { Client, Message, TextChannel } from 'discord.js';
 import pino from 'pino';
-import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { chatbotConfig } from '../../config';
 import { ChatMemoryManager } from './memory/chatMemoryManager';
 import { queryAllMemories } from './memory/memoryProcessor';
 import { Logger } from './logger';
 import { supabase } from '../../utils/supabase/client';
+import { openRouter, createChatCompletion } from '../../utils/openRouter/client';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -29,7 +29,6 @@ export class ChatbotModule {
   private client: Client;
   private botUserId: string | undefined;
   private logger: Logger;
-  private openai: OpenAI;
   private chatMemoryManager: ChatMemoryManager;
 
   constructor(client: Client) {
@@ -37,12 +36,6 @@ export class ChatbotModule {
     this.client = client;
     this.logger = new Logger();
     this.chatMemoryManager = new ChatMemoryManager(client, 30);
-
-    this.openai = new OpenAI({
-      baseURL: 'https://openrouter.ai/api/v1',
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-
-    });
   }
 
   public async start(readyClient: any): Promise<void> {
@@ -146,7 +139,7 @@ export class ChatbotModule {
       { role: 'user', content: `${message.member?.displayName || message.author.username}: ${message.content}` }
     ];
 
-    const result = await this.openai.chat.completions.create({
+    const result = await createChatCompletion({
       model: chatbotConfig.openRouterModel,
       messages,
       max_tokens: 1000,

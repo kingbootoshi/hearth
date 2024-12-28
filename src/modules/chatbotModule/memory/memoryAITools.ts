@@ -1,15 +1,9 @@
-import { OpenAI } from "openai";
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions";
 import { createModuleLogger } from '../../../utils/logger';
 import { chatbotConfig } from '../../../config';
+import { createChatCompletion } from '../../../utils/openRouter/client';
 
 const logger = createModuleLogger('openAIApi');
-
-// Initialize OpenAI client with OpenRouter configuration
-const openai = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY || '',
-});
 
 /**
  * Extract chat knowledge using OpenAI's function calling feature
@@ -98,16 +92,13 @@ export async function extractChatKnowledge(chat_history: any[]): Promise<any> {
   }
   ];
 
-  const response = await openai.chat.completions.create({
+  const response = await createChatCompletion({
     model: chatbotConfig.memoryExtractionModel,
     messages,
     tools,
     tool_choice: "auto",
     temperature: 1,
-    max_tokens: 2048,
-    top_p: 1,
-    frequency_penalty: 0,
-    presence_penalty: 0
+    max_tokens: 2048
   });
 
   const toolCalls = response.choices[0].message.tool_calls;
@@ -164,7 +155,7 @@ export async function condenseSummaries(summaries: string[], summary_type: strin
   }
 ];
 
-  const response = await openai.chat.completions.create({
+  const response = await createChatCompletion({
     model: chatbotConfig.memorySummaryModel,
     messages,
     tools,
@@ -187,7 +178,7 @@ export async function callOpenAI(apiPayload: any) {
   logger.info('Calling OpenRouter API with payload');
   try {
     logger.debug({ payload: apiPayload }, 'OpenRouter API call payload data');
-    const response = await openai.chat.completions.create(apiPayload);
+    const response = await createChatCompletion(apiPayload);
     logger.info('OpenRouter API call successful');
     return response;
   } catch (error) {

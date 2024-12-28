@@ -1,8 +1,8 @@
 // enhancePrompt.ts
-import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { imageGenConfig } from '../../config';
 import pino from 'pino';
+import { createChatCompletion } from '../../utils/openRouter/client';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -10,12 +10,6 @@ const logger = pino({
     level: (label) => ({ level: label.toUpperCase() }),
   },
   timestamp: pino.stdTimeFunctions.isoTime,
-});
-
-// Initialize OpenAI client with OpenRouter configuration
-const openai = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY || '',
 });
 
 export async function enhancePrompt(prompt: string): Promise<string> {
@@ -36,7 +30,7 @@ export async function enhancePrompt(prompt: string): Promise<string> {
         }
       ];
 
-      const result = await openai.chat.completions.create({
+      const result = await createChatCompletion({
         model: imageGenConfig.openRouterModel,
         messages,
         temperature: 1,
