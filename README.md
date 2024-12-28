@@ -16,7 +16,6 @@
 - 🎮 **Modular Command System**: Easily extend functionality with custom commands
 - ⚙️ **Highly Customizable**: Tailor the bot's personality and behavior to your server
 - 🔌 **Plugin Architecture**: Add new features without touching the core code
-- 🛡️ **Smart Moderation**: AI-powered content filtering and user management
 
 ## 🚀 Quick Start
 
@@ -43,6 +42,14 @@ cp .env.example .env
 # Edit .env with your Discord token and other settings
 ```
 
+You MUST set up a supabase table with the database.sql file for the bot to work! Simply copy and paste the contents of database.sql into your supabase database's SQL Editor.
+
+Then, go to Storage, and create two PUBLIC buckets: 
+- good_images
+- bad_images
+
+Now you can run the bot!
+
 ### Running the Bot
 
 ```bash
@@ -54,7 +61,12 @@ bun run src/index.js
 
 Quest Boo is designed to be highly customizable:
 
-- **Commands**: Add new commands in the `commands/` directory
-- **Personalities**: Configure different chat personalities in `config/personalities.js`
-- **Responses**: Customize response templates in `templates/`
-- **Plugins**: Drop new plugins into the `plugins/` directory
+- **Commands**: Add new commands in the `commands/` directory. Automatically registers to the discord bot in your server.
+- **Modules**: Add new modules in the `src/modules/` directory.
+- **Config**: Add new config files in the `config/` directory. This is where we can customize modules with ease.
+
+Current modules:
+
+- AI chatbot module with advanced memory and function calling
+- Daily/hourly channel summarization module
+- Image generation module

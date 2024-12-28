@@ -5,3 +5,6 @@ update: finished modularizing this entire bot and setup openrouter for the entir
 
 - give the bot function calling/tools. personally i want it to be able to use it's own commands, and post to twitter
 - give the chatbot module vision. i think openrouter will route it to a vision model if vision is required.
+
+quest boo personalization:
+connect embedchain to the chatbot module, and add all boo stories to the embedchain for boo universe consistency.
