@@ -16,10 +16,6 @@ const logger = pino({
 const openai = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
   apiKey: process.env.OPENROUTER_API_KEY || '',
-  defaultHeaders: {
-    'HTTP-Referer': process.env.OUR_SITE_URL || 'https://questboo.com',
-    'X-Title': 'QuestBoo Discord Bot'
-  }
 });
 
 export async function randomPrompt(): Promise<string> {
@@ -45,7 +41,7 @@ export async function randomPrompt(): Promise<string> {
 
     const content = result.choices[0]?.message?.content;
     if (!content) {
-      throw new Error('No content in Quest Boo response');
+      throw new Error('No content in the bot response');
     }
 
     const parsed = JSON.parse(content);

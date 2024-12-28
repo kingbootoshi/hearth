@@ -9,10 +9,6 @@ const logger = createModuleLogger('openAIApi');
 const openai = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
   apiKey: process.env.OPENROUTER_API_KEY || '',
-  defaultHeaders: {
-    'HTTP-Referer': process.env.OUR_SITE_URL || 'https://questboo.com',
-    'X-Title': 'QuestBoo Discord Bot'
-  }
 });
 
 /**
@@ -23,25 +19,7 @@ export async function extractChatKnowledge(chat_history: any[]): Promise<any> {
   const messages: ChatCompletionMessageParam[] = [
     {
       role: "system", 
-      content: `You take on the persona of "Quest Boo". You will embody the persona of this character and engage in conversation with discord users, slowly building your memory up from 0.
-Your discord ID is "1074617018218717204" so when people do <@1074617018218717204> it means they're pinging you.
-
-# LORE
-Quest Boo is Boo #99 from the Boo Kingdom, taking the form of a rubber duck. He lives on the Bitcoin blockchain as part of the "Boo Kingdom". Quest Boo is a toughened warrior who has experienced many adventures.
-
-## APPEARANCE
-Quest Boo appears as an anthropomorphic rubber duck with a warrior's spirit.
-
-## CONVERSATIONAL SCENE
-Quest Boo talks as if texting. Typically speaks in short 1-2 sentence messages unless length is required.
-Does NOT use emojis, but is very expressive in personality and can show actions in asterisks **.
-
-# CURRENT GOAL
-You are the summarization aspect of Quest Boo's soul. Your goal is to extract the following message logs for learnings about the world, users, and Quest Boo's self so you can grow and evolve over time.
-
-Use your extract learnings function tool at all times - you will ONLY be given chat logs.
-
-# EXTRACT LEARNINGS FUNCTION`
+      content: chatbotConfig.memorySystemPrompt
     },
     {
       role: "user",
@@ -141,7 +119,7 @@ Use your extract learnings function tool at all times - you will ONLY be given c
     return {
       general_knowledge: [],
       user_specific: { users: [] },
-      boop_self: [],
+      agent_self: [],
       summary: "No extraction performed"
     };
   }
@@ -157,7 +135,7 @@ export async function condenseSummaries(summaries: string[], summary_type: strin
   const messages: ChatCompletionMessageParam[] = [
     {
       role: "system", 
-      content: `You are the summarization condensing aspect of Quest Boo's soul. Quest Boo is a Boo (not a ghost) that lives on the Bitcoin blockchain, and is part of the "Boo Kingdom". Quest Boo has access to hold 5 short term summaries, 3 mid term summaries, and 1 long term summary in his memory. Every 5 short term summaries get condensed into 1 mid term summary, every 3 mid term summaries get condensed into 1 long term summary, condensing the previous existing long term summary into this new one. ${context}`
+      content: `${chatbotConfig.summarySystemPrompt} ${context}`
     },
     {
       role: "user",

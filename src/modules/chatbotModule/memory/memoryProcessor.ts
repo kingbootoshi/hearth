@@ -1,10 +1,11 @@
 import fetch from 'node-fetch';
 import { Client, EmbedBuilder, TextChannel } from 'discord.js';
 import { createModuleLogger } from '../../../utils/logger';
+import { chatbotConfig } from '../../../config';
 
 const logger = createModuleLogger('memoryProcessor');
 
-const AGENT_ID = "quest_boo";
+const AGENT_ID = chatbotConfig.normalizedBotName;
 const DEBUG_MODE = true;
 
 function debugLog(message: string, data?: any) {
@@ -67,7 +68,7 @@ export async function storeKnowledgeInMem0(extracted_knowledge: any, client: Cli
       run_id: "self_knowledge",
       agent_id: AGENT_ID
     });
-    await sendMemoryEmbed("Quest Boo Self-Knowledge", result, client);
+    await sendMemoryEmbed(`${chatbotConfig.botName} Self-Knowledge`, result, client);
   }
 
   // user_specific -> run_id = "user_specific_knowledge", user_id = <Discord user>
@@ -197,7 +198,7 @@ export async function sendMemoryEmbed(title: string, result: any, client: Client
   let color = 0x0000ff;
   if (title.includes("General Knowledge")) color = 0x00ff00;
   else if (title.includes("User Knowledge")) color = 0x800080;
-  else if (title.includes("Quest Boo Self-Knowledge")) color = 0xffd700;
+  else if (title.includes("Self-Knowledge")) color = 0xffd700;
 
   const embed = new EmbedBuilder()
     .setTitle(`New Memories Added: ${title}`)
@@ -242,8 +243,12 @@ export async function sendMemoryEmbed(title: string, result: any, client: Client
     embed.setThumbnail("https://cdn.discordapp.com/attachments/1128943804825739347/1306860603117146133/Enchanted_Book.gif");
   } else if (title.includes("User Knowledge") && user) {
     embed.setThumbnail(user.displayAvatarURL({ size: 256 }));
-  } else if (title.includes("Quest Boo Self-Knowledge")) {
-    embed.setThumbnail("https://cdn.discordapp.com/attachments/1306860990591406080/1319849776229122138/questboo.png");
+  } else if (title.includes("Self-Knowledge")) {
+    // Use bot's avatar instead of hardcoded image
+    const bot = client.user;
+    if (bot) {
+      embed.setThumbnail(bot.displayAvatarURL({ size: 256 }));
+    }
   }
 
   embed.setFooter({ text: "Memory System Update" });

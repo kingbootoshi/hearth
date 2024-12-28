@@ -4,12 +4,15 @@ import yaml from 'js-yaml';
 
 export interface ChatbotConfig {
   enabled: boolean;
-  openRouterModel: string;   // e.g. "openai/gpt-4o"
-  botName: string;           // e.g. "quest_boo" after normalization
-  personality: string;       // replaces the old questBooPrompt.md content
-  discordId: string;         // the bot's Discord user ID
-  memoryApiUrl: string;      // memory server URL
-  memoryEmbedChannelId: string; // channel to post memory embeds
+  openRouterModel: string;   
+  botName: string;           // Original non-normalized name
+  personality: string;       
+  discordId: string;        
+  memoryApiUrl: string;      
+  memoryEmbedChannelId: string;
+  normalizedBotName: string; // Normalized version for agent_id
+  memorySystemPrompt: string; // System prompt for memory extraction
+  summarySystemPrompt: string; // System prompt for summary condensing
 }
 
 // By default, read config/chatbot.yaml
@@ -22,17 +25,20 @@ export function loadChatbotConfig(nameNormalizer: (name: string) => string): Cha
   const raw = yaml.load(fs.readFileSync(configPath, 'utf8')) as Partial<ChatbotConfig>;
   // Provide defaults or checks
   const enabled = raw.enabled !== undefined ? raw.enabled : true;
-  const rawName = raw.botName || 'questboo';
+  const rawName = raw.botName || 'Quest Boo';
   const normalizedName = nameNormalizer(rawName);
 
   const finalConfig: ChatbotConfig = {
     enabled,
     openRouterModel: raw.openRouterModel || 'openai/gpt-4o',
-    botName: normalizedName,
+    botName: rawName,
+    normalizedBotName: normalizedName,
     personality: raw.personality || 'This is my personality!',
     discordId: raw.discordId || '',
     memoryApiUrl: raw.memoryApiUrl || 'http://localhost:8000',
     memoryEmbedChannelId: raw.memoryEmbedChannelId || '',
+    memorySystemPrompt: raw.memorySystemPrompt || '',
+    summarySystemPrompt: raw.summarySystemPrompt || '',
   };
 
   return finalConfig;
