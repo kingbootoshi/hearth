@@ -58,9 +58,17 @@ export class ChatMemoryManager {
   async getAllMessages(): Promise<ChatMessage[]> {
     const { data } = await supabase
       .from('chat_history')
-      .select('*')
+      .select('user_id, username, content, timestamp, is_bot')
       .order('timestamp', { ascending: true });
-    return data || [];
+    
+    // Ensure we only return the text content
+    return (data || []).map(msg => ({
+      user_id: msg.user_id,
+      username: msg.username,
+      content: msg.content, // Only use the text content
+      timestamp: msg.timestamp,
+      is_bot: msg.is_bot
+    }));
   }
 
   async archiveMessages(messagesToArchive: ChatMessage[]) {
@@ -111,12 +119,12 @@ export class ChatMemoryManager {
       agent_self: Array.isArray(extracted_knowledge.agent_self)
         ? extracted_knowledge.agent_self.map((m: string) => ({ memory: m }))
         : [],
-      user_specific: extracted_knowledge.user_specific?.users?.map((user: any) => ({
-        user_id: user.user_id,
-        memories: Array.isArray(user.learnings) 
-          ? user.learnings.map((m: string) => ({ memory: m }))
-          : []
-      })) || []
+      user_specific: {
+        users: extracted_knowledge.user_specific?.users?.map((user: any) => ({
+          user_id: user.user_id,
+          learnings: user.learnings || [] // Keep learnings as array of strings
+        })) || []
+      }
     };
 
     // Store in mem0

@@ -11,3 +11,60 @@ I am using the PINO logger for logging. Please log everything with depth
 - Use info to log the flow of the program
 - Use debug to log more detailed logs on outputs
 - Use error to log errors
+
+Guide: Creating New Tools for the Chatbot
+----------------------------------------
+
+To add a new tool that the chatbot can use, follow these steps:
+
+1. Define the Tool in config/chatbotTools.yaml:
+   - Add a new tool definition under the 'tools' array
+   - Specify type: "function"
+   - Define the function name, description, and parameters
+   - Mark required parameters and set additionalProperties to false
+   Example:
+   ```yaml
+   - type: "function"
+     function:
+       name: "tool_name"
+       description: "What the tool does"
+       parameters:
+         type: "object"
+         properties:
+           param1:
+             type: "string"
+             description: "Parameter description"
+         required: ["param1"]
+         additionalProperties: false
+   ```
+
+2. Create Tool Handler in src/modules/chatbotModule/tools/toolHandler.ts:
+   - Define the argument interface for your tool
+   - Create a handler function that takes (args, client)
+   - Implement the tool's functionality
+   - Add proper logging using pino
+   - Add the tool to the executeToolCall switch statement
+   Example:
+   ```typescript
+   interface ToolArgs {
+     param1: string;
+   }
+
+   async function handleTool(args: ToolArgs, client: Client): Promise<string> {
+     logger.info({ args }, '[tool_name] Tool invoked');
+     try {
+       // Tool implementation
+       return 'Success message';
+     } catch (error) {
+       logger.error({ error }, 'Error in tool');
+       throw error;
+     }
+   }
+   ```
+
+3. Testing:
+   - The tool will be automatically available to the chatbot
+   - The chatbot will use the tool when appropriate based on the tool's description
+   - Tool execution results are fed back to the chatbot for further processing
+
+Note: Tools should be atomic and focused on a single responsibility. Complex functionality should be broken down into multiple tools that can be chained together using the run_again tool.

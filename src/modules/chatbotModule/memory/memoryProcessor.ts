@@ -267,6 +267,8 @@ export async function sendMemoryEmbed(title: string, result: any, client: Client
  * in a unified string block. If no memories or relations are found, returns fallback text.
  */
 export async function queryAllMemories(message: string, userId?: string): Promise<string> {
+  logger.debug({ message, userId }, 'Starting queryAllMemories');
+  
   const serverUp = await pingMemoryServer();
   if (!serverUp) {
     logger.error('Memory server not reachable; returning fallback message for memory queries');
@@ -274,27 +276,62 @@ export async function queryAllMemories(message: string, userId?: string): Promis
   }
 
   try {
+    logger.debug('Starting parallel memory category queries');
+    
     const [worldData, selfData, userData] = await Promise.all([
-      queryMemoryCategory(message, "general_knowledge"),
-      queryMemoryCategory(message, "self_knowledge"),
-      queryMemoryCategory(message, "user_specific_knowledge", userId)
+      queryMemoryCategory(message, "general_knowledge").then(result => {
+        logger.debug(
+          { 
+            memoryCount: result.memories.length,
+            relationCount: result.relations.length 
+          },
+          'World knowledge query complete'
+        );
+        return result;
+      }),
+      queryMemoryCategory(message, "self_knowledge").then(result => {
+        logger.debug(
+          { 
+            memoryCount: result.memories.length,
+            relationCount: result.relations.length 
+          },
+          'Self knowledge query complete'
+        );
+        return result;
+      }),
+      queryMemoryCategory(message, "user_specific_knowledge", userId).then(result => {
+        logger.debug(
+          { 
+            memoryCount: result.memories.length,
+            relationCount: result.relations.length,
+            userId 
+          },
+          'User knowledge query complete'
+        );
+        return result;
+      })
     ]);
+
+    logger.debug('All memory queries completed, formatting sections');
 
     // Format memories into sections
     const sections: string[] = [];
 
     // Helper to format memory content
     function formatMemory(memory: any): string {
+      logger.debug({ memory }, 'Formatting memory');
       if (typeof memory === 'string') return memory;
       return memory.memory || JSON.stringify(memory);
     }
 
-    // Add world knowledge section
+    // Add detailed logging for each section formatting
     if (worldData.memories.length > 0 || worldData.relations.length > 0) {
+      logger.debug('Formatting world knowledge section');
       sections.push("### World Knowledge Memories:");
       worldData.memories.forEach(m => sections.push(`• ${formatMemory(m)}`));
       
       if (worldData.relations.length > 0) {
+        logger.debug({ relationCount: worldData.relations.length }, 'Adding world relations');
         sections.push("### Relations:");
         worldData.relations.forEach(relGroup => {
           relGroup.forEach(rel => {
@@ -334,9 +371,23 @@ export async function queryAllMemories(message: string, userId?: string): Promis
       }
     }
 
+    logger.debug(
+      { 
+        totalSections: sections.length,
+        totalLength: sections.join('\n').length 
+      },
+      'Memory formatting complete'
+    );
+
     return sections.length > 0 ? sections.join('\n') : "No relevant memories found.";
   } catch (error) {
-    logger.error({ error }, "Error querying memories");
+    logger.error(
+      { 
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined 
+      },
+      "Error querying memories"
+    );
     return "Error accessing memory system.";
   }
 }
@@ -349,6 +400,15 @@ async function queryMemoryCategory(
   run_id: string,
   userId?: string
 ): Promise<{memories: any[], relations: any[][]}> {
+  logger.debug(
+    { 
+      run_id,
+      queryLength: query.length,
+      userId 
+    },
+    'Starting memory category query'
+  );
+
   try {
     const body = {
       query,
@@ -358,7 +418,7 @@ async function queryMemoryCategory(
       limit: 5
     };
 
-    logger.debug({ run_id, query: body, userId }, 'Querying memory category');
+    logger.debug({ body }, 'Sending memory query request');
 
     const response = await fetch("http://localhost:8000/query", {
       method: "POST",
@@ -368,6 +428,14 @@ async function queryMemoryCategory(
       },
       body: JSON.stringify(body)
     });
+
+    logger.debug(
+      { 
+        status: response.status,
+        ok: response.ok 
+      },
+      'Memory query response received'
+    );
 
     if (!response.ok) {
       logger.error({
@@ -380,12 +448,28 @@ async function queryMemoryCategory(
     }
 
     const result = await response.json();
-    logger.debug({ run_id, result }, 'Memory query response');
+    logger.debug(
+      { 
+        run_id,
+        resultStatus: result.status,
+        hasResults: !!result.results,
+        hasRelations: !!result.results?.relations 
+      },
+      'Memory query response parsed'
+    );
 
     if (result?.status === "success") {
-      // Fix: Properly extract memories from nested structure
       const memories = result.results?.results || [];
       const relations = result.results?.relations || [];
+      
+      logger.debug(
+        { 
+          memoriesCount: memories.length,
+          relationsCount: relations.length 
+        },
+        'Successfully extracted memories and relations'
+      );
+      
       return { memories, relations };
     }
 

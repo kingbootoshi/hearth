@@ -32,14 +32,17 @@
     "axios-cookiejar-support": "^5.0.3",
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
+    "form-data": "^4.0.1",
     "groq-sdk": "^0.7.0",
     "js-yaml": "^4.1.0",
     "mongodb": "^6.8.0",
     "node-cron": "^3.0.3",
+    "oauth-1.0a": "^2.2.6",
     "openpipe": "^0.40.0",
     "pino": "^9.5.0",
     "pino-pretty": "^13.0.0",
     "tough-cookie": "^5.0.0",
+    "twitter-api-v2": "^1.19.0",
     "user-agents": "^1.1.330"
   }
 }

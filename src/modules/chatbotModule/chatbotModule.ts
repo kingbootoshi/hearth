@@ -54,6 +54,46 @@ async function getImageAsBase64(url: string): Promise<string | null> {
   }
 }
 
+// Helper function to check if a URL is an image
+function isImageUrl(url: string): boolean {
+  // Common image extensions
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff'];
+  const urlLower = url.toLowerCase();
+  return imageExtensions.some(ext => urlLower.endsWith(ext));
+}
+
+// Helper function to extract URLs from text
+function extractUrls(text: string): string[] {
+  const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
+  return text.match(urlRegex) || [];
+}
+
+// Helper function to format message with links
+function formatMessageWithLinks(msg: Message): string {
+  const timeStamp = new Date(msg.createdTimestamp).toLocaleString('en-US', {
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hour12: true,
+    timeZone: 'UTC',
+  });
+
+  let content = msg.content;
+  const links = extractUrls(msg.content);
+  
+  // Add links from embeds
+  msg.embeds.forEach(embed => {
+    if (embed.url) links.push(embed.url);
+  });
+
+  // If there are links, append them to the message
+  if (links.length > 0) {
+    content += ` (Links: ${links.join(', ')})`;
+  }
+
+  return `[${timeStamp} UTC] ${msg.author.username}: ${content}`;
+}
+
 async function getRecentImagesFromChannel(
   channel: TextChannel,
   messageLimit: number = 5
@@ -62,58 +102,53 @@ async function getRecentImagesFromChannel(
   const imageUrls: string[] = [];
 
   messages.forEach((msg) => {
+    // Get images from attachments
     msg.attachments.forEach((attachment) => {
       if (attachment.contentType?.startsWith('image/')) {
         imageUrls.push(attachment.url);
       }
     });
+
+    // Get images from embeds
     msg.embeds.forEach((embed) => {
+      // Check main image
       if (embed.image) {
         imageUrls.push(embed.image.url);
+      }
+      // Check thumbnail
+      if (embed.thumbnail) {
+        imageUrls.push(embed.thumbnail.url);
+      }
+      // Check author icon if it's an image
+      if (embed.author?.iconURL) {
+        imageUrls.push(embed.author.iconURL);
+      }
+      // Check footer icon if it's an image
+      if (embed.footer?.iconURL) {
+        imageUrls.push(embed.footer.iconURL);
+      }
+    });
+
+    // Get images from message content (URLs)
+    const contentUrls = extractUrls(msg.content);
+    contentUrls.forEach(url => {
+      if (isImageUrl(url)) {
+        imageUrls.push(url);
       }
     });
   });
 
-  return imageUrls.slice(0, 10);
+  // Remove duplicates and limit to 10 images
+  return [...new Set(imageUrls)].slice(0, 10);
 }
 
 async function formatChatHistoryToMessages(
   messages: ChatMessage[]
 ): Promise<ChatCompletionMessageParam[]> {
-  const formattedMessages = await Promise.all(
-    messages.map(async (msg) => {
-      const content: ChatCompletionContentPart[] = [
-        {
-          type: 'text',
-          text: msg.content,
-        } as ChatCompletionContentPartText,
-      ];
-      if (msg.images && Array.isArray(msg.images)) {
-        const base64Promises = msg.images.map((imageUrl) =>
-          getImageAsBase64(imageUrl)
-        );
-        const base64Results = await Promise.all(base64Promises);
-        base64Results.forEach((base64Url) => {
-          if (base64Url) {
-            content.push({
-              type: 'image_url',
-              image_url: { url: base64Url },
-            } as ChatCompletionContentPartImage);
-          }
-        });
-      }
-
-      return {
-        role: msg.is_bot ? 'assistant' : 'user',
-        content:
-          content.length === 1
-            ? (content[0] as ChatCompletionContentPartText).text
-            : content,
-      } as ChatCompletionMessageParam;
-    })
-  );
-
-  return formattedMessages;
+  return messages.map((msg) => ({
+    role: msg.is_bot ? 'assistant' as const : 'user' as const,
+    content: msg.is_bot ? msg.content : `${msg.username}: ${msg.content}`
+  }));
 }
 
 export class ChatbotModule {
@@ -127,6 +162,47 @@ export class ChatbotModule {
     this.client = client;
     this.logger = new Logger();
     this.chatMemoryManager = new ChatMemoryManager(client, 30);
+  }
+
+  // Helper function to get recent chat history
+  private async getRecentChatHistory(channel: TextChannel, limit: number = 10): Promise<string> {
+    const messages = await channel.messages.fetch({ limit });
+    return messages.reverse().map(msg => {
+      let content = msg.content;
+      const links: string[] = [];
+
+      // Get links from embeds
+      msg.embeds.forEach(embed => {
+        if (embed.url) links.push(embed.url);
+        if (embed.image?.url) links.push(embed.image.url);
+        if (embed.thumbnail?.url) links.push(embed.thumbnail.url);
+      });
+
+      // Get links from attachments
+      msg.attachments.forEach(attachment => {
+        links.push(attachment.url);
+      });
+
+      // Get links from content
+      const contentLinks = extractUrls(msg.content);
+      links.push(...contentLinks);
+
+      // Add unique links to the message
+      const uniqueLinks = [...new Set(links)];
+      if (uniqueLinks.length > 0) {
+        content += ` (Links: ${uniqueLinks.join(', ')})`;
+      }
+
+      const timeStamp = new Date(msg.createdTimestamp).toLocaleString('en-US', {
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        hour12: true,
+        timeZone: 'UTC',
+      });
+
+      return `[${timeStamp} UTC] ${msg.author.username}: ${content}`;
+    }).join('\n');
   }
 
   public async start(readyClient: any): Promise<void> {
@@ -180,27 +256,6 @@ export class ChatbotModule {
     const recentImages = await getRecentImagesFromChannel(
       message.channel as TextChannel
     );
-    logger.info(
-      {
-        imageCount: recentImages.length,
-        imageUrls: recentImages,
-      },
-      'Processing images from recent messages'
-    );
-
-    const userMessageImages = Array.from(message.attachments.values())
-      .filter((att) => att.contentType?.startsWith('image/'))
-      .map((att) => att.url);
-
-    if (userMessageImages.length > 0) {
-      logger.info(
-        {
-          imageCount: userMessageImages.length,
-          imageUrls: userMessageImages,
-        },
-        'Found images in current message'
-      );
-    }
 
     const messageToStore: ChatMessage = {
       user_id: message.author.id,
@@ -208,48 +263,59 @@ export class ChatbotModule {
       content: message.content,
       timestamp: new Date().toISOString(),
       is_bot: false,
-      images: userMessageImages,
+      images: recentImages,
     };
 
     await this.chatMemoryManager.addMessage(messageToStore);
+
+    // Add debug logging before memory query
+    logger.debug(
+      { 
+        messageId: message.id,
+        channelId: message.channel.id,
+        content: message.content 
+      },
+      'Starting memory query process'
+    );
 
     // Build memory context
     await message.channel.sendTyping();
     const memoryContext = await queryAllMemories(message.content, message.author.id);
 
+    logger.debug(
+      { 
+        messageId: message.id,
+        memoryContextLength: memoryContext.length,
+        hasMemories: memoryContext !== "No relevant memories found." 
+      },
+      'Memory query completed'
+    );
+
     // Get chat history from DB
+    logger.debug('Fetching chat history from Supabase');
     const { data: chatHistory } = await supabase
       .from('chat_history')
       .select('*')
       .lt('timestamp', new Date().toISOString())
       .order('timestamp', { ascending: true });
 
+    logger.debug(
+      { historyCount: chatHistory?.length || 0 },
+      'Chat history fetched'
+    );
+
     const historyMessages = await formatChatHistoryToMessages(chatHistory || []);
     const summaries = await this.chatMemoryManager.formatRecentSummariesForPrompt();
-    const allMessages = await this.chatMemoryManager.getAllMessages();
-    const chatHistoryText =
-      allMessages.length > 0
-        ? '\nChat History in Memory:\n' +
-          allMessages
-            .map((msg) => {
-              const timeStamp = new Date(msg.timestamp).toLocaleString('en-US', {
-                hour: 'numeric',
-                minute: 'numeric',
-                second: 'numeric',
-                hour12: true,
-                timeZone: 'UTC',
-              });
-              return `[${timeStamp} UTC] ${msg.username}: ${msg.content}`;
-            })
-            .join('\n')
-        : '';
 
+    // Get recent chat history including links and embeds
+    const recentChatHistory = await this.getRecentChatHistory(message.channel as TextChannel);
+    
     const channelName = message.channel.isDMBased()
       ? 'Direct Message'
       : `#${(message.channel as TextChannel).name}`;
 
     const channelId = message.channel.id;
-    const addContext = `## DISCORD GROUP CHAT CONTEXT\nChannel Name: ${channelName}\nChannel ID: ${channelId}${chatHistoryText}`;
+    const addContext = `## DISCORD GROUP CHAT CONTEXT\nChannel Name: ${channelName}\nChannel ID: ${channelId}\n${recentChatHistory}`;
 
     let finalPrompt = chatbotConfig.personality;
     finalPrompt = finalPrompt.replace('{{SUMMARIES_HERE}}', summaries);
@@ -369,11 +435,28 @@ export class ChatbotModule {
     logger.info(
       {
         recentImagesCount: recentImages.length,
-        userImagesCount: userMessageImages.length,
+        userImagesCount: recentImages.length,
         botImagesCount: botMessageImages.length,
       },
       'Completed processing all images in conversation'
     );
+  }
+
+  /**
+   * Format a tool call into a readable string
+   */
+  private formatToolCall(toolName: string, argsStr: string): string {
+    try {
+      const args = JSON.parse(argsStr);
+      // Format the arguments into a readable string
+      const formattedArgs = Object.entries(args)
+        .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+        .join(', ');
+      return `${toolName}(${formattedArgs})`;
+    } catch (error) {
+      logger.error({ error, toolName, argsStr }, 'Error formatting tool call');
+      return `${toolName}(error parsing args)`;
+    }
   }
 
   /**
@@ -386,28 +469,56 @@ export class ChatbotModule {
   ): Promise<string> {
     let conversationMessages = [...baseMessages];
     let lastMessage = '';
+    let toolHistory: string[] = [];
 
     for (const call of toolCalls) {
       const toolName = call.function.name;
       const argsStr = call.function.arguments;
+      
+      // Execute the tool
       const toolResult = await executeToolCall(toolName, argsStr, this.client);
 
-      // If run_again tool returns false, don't make additional completions
+      // If run_again, refresh chat history before continuing
       if (toolName === 'run_again') {
         try {
           const args = JSON.parse(argsStr);
           if (!args.shouldRun) {
-            return lastMessage; // Return current reply without making additional completions
+            return lastMessage;
           }
+          // Refresh chat history and log the new conversation state
+          const freshHistory = await this.chatMemoryManager.getAllMessages();
+          conversationMessages = await formatChatHistoryToMessages(freshHistory);
+          
+          // Add the system message and personality at the start
+          conversationMessages = [
+            { role: 'system' as const, content: chatbotConfig.personality },
+            ...conversationMessages
+          ];
+          
+          logger.info({ 
+            messageCount: freshHistory.length,
+            lastMessage: freshHistory[freshHistory.length - 1]?.content 
+          }, 'Refreshed chat history for run_again');
         } catch (error) {
-          logger.error({ error, argsStr }, 'Failed to parse run_again arguments');
+          logger.error({ error, argsStr }, 'Failed to handle run_again');
         }
       }
 
-      // Provide the tool result as a user message
+      toolHistory.push(this.formatToolCall(toolName, argsStr));
+      
+      // Store tool result as a user message in chat history
+      await this.chatMemoryManager.addMessage({
+        user_id: 'system',
+        username: 'Tool Result',
+        content: toolResult, // Just store the raw result string
+        timestamp: new Date().toISOString(),
+        is_bot: false
+      });
+
+      // Update the tool response message format
       const toolResponseUserMessage = {
         role: 'user' as const,
-        content: `[TOOL USED ${toolName} RESULTS: ${JSON.stringify(toolResult)}]`,
+        content: `Tool Result: ${toolResult}` // Simplify the tool result format
       };
       conversationMessages.push(toolResponseUserMessage);
 
@@ -420,6 +531,13 @@ export class ChatbotModule {
         tools: chatbotTools,
         tool_choice: 'auto',
       });
+
+      // Log the API call
+      this.logger.logApiCall(
+        'Tool followup conversation', 
+        conversationMessages, 
+        followupResponse
+      );
 
       const followupChoice = followupResponse.choices?.[0];
       if (!followupChoice) {

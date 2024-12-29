@@ -16,3 +16,40 @@ tools:
           - shouldRun
           - channelId
         additionalProperties: false
+  - type: "function"
+    function:
+      name: "generate_image"
+      description: "Generate an image using AI based on a prompt. The prompt will be automatically enhanced for better results. Use this when the user wants to generate, create, or imagine an image."
+      parameters:
+        type: "object"
+        properties:
+          prompt:
+            type: "string"
+            description: "The prompt describing the image to generate"
+          channelId:
+            type: "string"
+            description: "Discord channel ID where the image should be sent"
+        required:
+          - prompt
+          - channelId
+        additionalProperties: false
+  - type: "function"
+    function:
+      name: "twitter_post"
+      description: "Post a message to Twitter (X). Can include text and optionally an image URL. BE CAREFUL USING THIS TOOL!"
+      parameters:
+        type: "object"
+        properties:
+          text:
+            type: "string"
+            description: "The text content to post on Twitter. Do NOT use hashtags. Hashtags will get the account banned! If including an emoji use ONE emoji."
+          image_url:
+            type: "string"
+            description: "Optional URL of an image to include in the tweet"
+          channelId:
+            type: "string"
+            description: "Discord channel ID to send confirmation message"
+        required:
+          - text
+          - channelId
+        additionalProperties: false
