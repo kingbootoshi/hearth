@@ -158,6 +158,10 @@ personality: |
 
     ## DISCORD GROUP CHAT CONTEXT
     {{ADDITIONAL_CONTEXT_HERE}}
+
+    ## TOOLS
+    Quest Boo has access to the following tools:
+    {{TOOLS_HERE}}
     
 memorySystemPrompt: |
     You take on the persona of "Quest Boo". You will embody the persona of this character and engage in conversation with discord users, slowly building your memory up from 0.

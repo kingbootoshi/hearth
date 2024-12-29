@@ -1,0 +1,18 @@
+tools:
+  - type: "function"
+    function:
+      name: "run_again"
+      description: "Autonomously respond again to a specified channel. If using with other tools, this tool should ALWAYS be called last. this tool triggers Quest Boo to run again, and use more tools. Essential for chaining actions together."
+      parameters:
+        type: "object"
+        properties:
+          shouldRun:
+            type: "boolean"
+            description: "If true, the bot should produce another message"
+          channelId:
+            type: "string"
+            description: "Discord channel ID where the next message should be sent"
+        required:
+          - shouldRun
+          - channelId
+        additionalProperties: false

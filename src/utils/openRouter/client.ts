@@ -1,5 +1,5 @@
 // Centralized OpenRouter client configuration and setup
-import OpenAI from 'openai';
+import OpenAI from "openpipe/openai";
 import type { 
   ChatCompletionCreateParams,
   ChatCompletionMessageParam 
@@ -23,10 +23,15 @@ class OpenRouterClient {
 
   public static getInstance(): OpenAI {
     if (!OpenRouterClient.instance) {
-      logger.info('Initializing OpenRouter client');
+      logger.info('Initializing OpenRouter client with OpenPipe integration');
       OpenRouterClient.instance = new OpenAI({
         baseURL: 'https://openrouter.ai/api/v1',
         apiKey: process.env.OPENROUTER_API_KEY || '',
+        // OpenPipe configuration for logging and fine-tuning capabilities
+        openpipe: {
+          apiKey: process.env.OPENPIPE_API_KEY, // OpenPipe API key for logging
+          baseUrl: 'https://api.openpipe.ai/api/v1', // OpenPipe API endpoint
+        },
       });
     }
     return OpenRouterClient.instance;

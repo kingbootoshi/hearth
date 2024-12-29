@@ -1,4 +1,4 @@
-import { ChatbotConfig, loadChatbotConfig } from './chatbotConfig';
+import { ChatbotConfig, loadChatbotConfig, loadChatbotTools, chatbotTools } from './chatbotConfig';
 import { ImageGenConfig, loadImageGenConfig } from './imageGenConfig';
 import { SummaryConfig, loadSummaryConfig } from './summaryConfig';
 
@@ -14,7 +14,7 @@ function normalizeBotName(name: string): string {
 }
 
 // Load configs
-const chatbotConfig: ChatbotConfig = loadChatbotConfig(normalizeBotName);
+const chatbotConfig: ChatbotConfig = loadChatbotConfig();
 const imageGenConfig: ImageGenConfig = loadImageGenConfig();
 const summaryConfig: SummaryConfig = loadSummaryConfig();
 
@@ -23,4 +23,7 @@ export {
   imageGenConfig,
   summaryConfig,
   normalizeBotName,
+  loadChatbotConfig,
+  loadChatbotTools,
+  chatbotTools,
 };
