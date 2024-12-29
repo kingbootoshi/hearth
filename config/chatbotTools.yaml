@@ -36,7 +36,7 @@ tools:
   - type: "function"
     function:
       name: "twitter_post"
-      description: "Post a message to Twitter (X). Can include text and optionally an image URL. BE CAREFUL USING THIS TOOL!"
+      description: "Post a message to Twitter (X). Can include text and optionally an image URL. BE CAREFUL USING THIS TOOL! DO NOT DOUBLE POST. IF YOU RECENTLY POSTED IN CHAT HISTORY, DO NOT POST AGAIN"
       parameters:
         type: "object"
         properties:

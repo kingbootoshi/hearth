@@ -89,7 +89,7 @@ export async function handleGenerateImage(
     });
 
     logger.info('Successfully generated and sent image');
-    return `Generated image with prompt: "${args.prompt}" and posted it in the channel.`;
+    return `Generated image with prompt: "${args.prompt}" and posted it in the channel. Image link is ${imageUrl}`;
   } catch (error) {
     logger.error({ error }, 'Error in generate_image tool');
     throw error;
