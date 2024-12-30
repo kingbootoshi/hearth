@@ -13,7 +13,7 @@ import {
 import { submitImageJob, getGeneratedImage } from '../modules/imageGenModule/imageGen';
 import { enhancePrompt } from '../modules/imageGenModule/enhancePrompt';
 import { randomPrompt } from '../modules/imageGenModule/randomPrompt';
-import { saveImageData } from '../utils/supabase/imageGenDB'; // Import the saveImageData function
+import { saveImageData } from '../modules/imageGenModule/database/imageGenDB'; // Import the saveImageData function
 
 // Utility function to generate a random hexadecimal color
 function getRandomColor(): number {

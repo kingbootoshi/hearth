@@ -1,4 +1,4 @@
-import { supabase } from './client';
+import { supabase } from '../../../utils/supabase/client';
 
 // Table: messages
 // Table: hourly_summaries
@@ -66,7 +66,7 @@ export async function getHourlySummaries(): Promise<string[]> {
       return [];
     }
     // Return only the 'summary' field
-    return data ? data.map((item) => item.summary) : [];
+    return data ? data.map((item: { summary: string }) => item.summary) : [];
   } catch (error) {
     console.error('Error in getHourlySummaries:', error);
     return [];

@@ -4,6 +4,7 @@ long/mid/short term memory process works as well. all stored to supabase databas
 update: finished modularizing this entire bot and setup openrouter for the entire system, so OpenRouter API covers all AI services in the bot.
 
 to do:
+- add central logging
 - make adding ai memories async
 - switch quest boo to an agent system to make it easier to manage. add messages, etc. it's getting messy
 - give the bot VC functionality

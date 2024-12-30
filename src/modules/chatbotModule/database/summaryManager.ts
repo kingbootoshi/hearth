@@ -1,7 +1,12 @@
 import { supabase } from '../../../utils/supabase/client';
-import { condenseSummaries } from './memoryAITools';
+import { condenseSummaries } from '../memory/memoryAITools';
 import { createModuleLogger } from '../../../utils/logger';
 const logger = createModuleLogger('summaryManager');
+
+interface SummaryRecord {
+  summary: string;
+  archived: boolean;
+}
 
 // Run the 3-2-1 pipeline:
 // After 3 short-term summaries, condense into 1 mid-term summary and archive them
@@ -20,7 +25,7 @@ export async function runSummaryPipeline() {
   // If we have 3 unarchived short-term, condense into mid-term
   if (shortUnarchived.length >= 3) {
     const toCondense = shortUnarchived.slice(0, 3);
-    const summariesToCondense = toCondense.map(s => s.summary);
+    const summariesToCondense = toCondense.map((s: SummaryRecord) => s.summary);
     const newMidTerm = await condenseSummaries(summariesToCondense, 'mid_term', 'Condensing 3 short-term summaries into a mid-term summary.');
 
     // Archive those 3 short-term
@@ -48,7 +53,7 @@ export async function runSummaryPipeline() {
   // If we have 2 unarchived mid-term, condense into long-term
   if (midUnarchived.length >= 2) {
     const toCondense = midUnarchived.slice(0, 2);
-    const summariesToCondense = toCondense.map(m => m.summary);
+    const summariesToCondense = toCondense.map((m: SummaryRecord) => m.summary);
     const newLongTerm = await condenseSummaries(summariesToCondense, 'long_term', 'Condensing 2 mid-term summaries into a long-term summary.');
 
     // Archive those 2 mid-term

@@ -1,4 +1,4 @@
-import { supabase } from './client';
+import { supabase } from '../../../utils/supabase/client';
 import { Buffer } from 'buffer';
 
 /**

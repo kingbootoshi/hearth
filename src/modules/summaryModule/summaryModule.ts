@@ -11,7 +11,7 @@ import {
   getHourlySummaries,    // Retrieves all hourly summaries
   clearHourlySummaries,  // Clears the hourly summaries once turned into daily
   insertDailySummary     // Saves a daily summary
-} from '../../utils/supabase/summaryDB';
+} from './database/summaryDB';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',

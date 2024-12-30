@@ -26,7 +26,6 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.22.0",
     "@fal-ai/client": "^1.2.1",
-    "@opensouls/cli": "^0.1.69",
     "@supabase/supabase-js": "^2.45.4",
     "axios": "^1.7.7",
     "axios-cookiejar-support": "^5.0.3",

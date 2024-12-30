@@ -8,13 +8,14 @@ import type {
   ChatCompletion,
 } from 'openai/resources/chat/completions';
 import { chatbotConfig, chatbotTools } from '../../config/chatbotConfig'; // [ADDED FOR TOOLS]
-import { ChatMemoryManager } from './memory/chatMemoryManager';
+import { ChatMemoryManager } from './database/chatMemoryManager';
 import { queryAllMemories } from './memory/memoryProcessor';
 import { Logger } from './logger';
 import { supabase } from '../../utils/supabase/client';
 import { openRouter, createChatCompletion } from '../../utils/openRouter/client';
 import fetch from 'node-fetch';
 import { executeToolCall } from './tools/toolHandler'; // [ADDED FOR TOOLS]
+import { ChatMessage } from './types/chatbot';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -23,15 +24,6 @@ const logger = pino({
   },
   timestamp: pino.stdTimeFunctions.isoTime,
 });
-
-interface ChatMessage {
-  user_id: string;
-  username: string;
-  content: string;
-  timestamp: string;
-  is_bot: boolean;
-  images?: string[];
-}
 
 async function getImageAsBase64(url: string): Promise<string | null> {
   try {

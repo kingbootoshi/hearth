@@ -1,15 +1,7 @@
 import { supabase } from '../../../utils/supabase/client';
 import { EmbedBuilder, Client, TextChannel } from 'discord.js';
 import pino from 'pino';
-
-interface ChatMessage {
-  user_id: string;
-  username: string;
-  content: string;
-  timestamp: string; 
-  is_bot: boolean;
-  images?: string[];
-}
+import { ChatMessage } from '../types/chatbot';
 
 const logger = pino({ name: 'chatMemoryManager', level: 'debug' });
 
@@ -62,10 +54,16 @@ export class ChatMemoryManager {
       .order('timestamp', { ascending: true });
     
     // Ensure we only return the text content
-    return (data || []).map(msg => ({
+    return (data || []).map((msg: { 
+      user_id: string;
+      username: string;
+      content: string;
+      timestamp: string;
+      is_bot: boolean;
+    }) => ({
       user_id: msg.user_id,
       username: msg.username,
-      content: msg.content, // Only use the text content
+      content: msg.content,
       timestamp: msg.timestamp,
       is_bot: msg.is_bot
     }));
@@ -93,7 +91,7 @@ export class ChatMemoryManager {
 
     // After archiving, we have last two messages still in chat_history
     // Extract knowledge
-    const { extractChatKnowledge } = await import('./memoryAITools');
+    const { extractChatKnowledge } = await import('../memory/memoryAITools');
     const extracted_knowledge = await extractChatKnowledge(current_history);
     logger.debug({ extracted_knowledge }, "Extracted knowledge");
 
@@ -128,7 +126,7 @@ export class ChatMemoryManager {
     };
 
     // Store in mem0
-    const { storeKnowledgeInMem0 } = await import('./memoryProcessor');
+    const { storeKnowledgeInMem0 } = await import('../memory/memoryProcessor');
     await storeKnowledgeInMem0(formattedMemories, this.client);
 
     logger.debug({ formattedMemories }, 'Formatted and stored memories in mem0');

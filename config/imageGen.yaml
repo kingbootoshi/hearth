@@ -1,4 +1,4 @@
-enabled: false
+enabled: true
 openRouterModel: "deepseek/deepseek-chat"
 
 # Basic system prompt for enhancePrompt usage
