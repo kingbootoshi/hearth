@@ -23,13 +23,20 @@ const logger = pino({
 
 export class SummaryModule {
   private client: Client;
+  private scheduledTasks: cron.ScheduledTask[] = [];
 
   constructor(client: Client) {
     logger.info('Initializing SummaryModule');
     this.client = client;
+    
+    // Log module status
+    if (!summaryConfig.enabled) {
+      logger.info('Summary module is disabled');
+    }
   }
 
   public async handleMessage(message: Message): Promise<void> {
+    // Early return if module is disabled
     if (!summaryConfig.enabled) {
       return;
     }
@@ -56,6 +63,7 @@ export class SummaryModule {
   }
 
   public scheduleTasks(): void {
+    // Early return if module is disabled
     if (!summaryConfig.enabled) {
       logger.info('Summary module is disabled, not scheduling tasks');
       return;
@@ -66,21 +74,38 @@ export class SummaryModule {
     const now = new Date();
     const delayUntilNextHour = (60 - now.getMinutes()) * 60 * 1000 - now.getSeconds() * 1000 - now.getMilliseconds();
 
+    // Store scheduled tasks so we can stop them if needed
     setTimeout(() => {
-      cron.schedule('0 0-9,11-23 * * *', this.summarizeMessages.bind(this), {
-        timezone: "America/Los_Angeles"
-      });
+      this.scheduledTasks.push(
+        cron.schedule('0 0-9,11-23 * * *', this.summarizeMessages.bind(this), {
+          timezone: "America/Los_Angeles"
+        })
+      );
       this.summarizeMessages();
     }, delayUntilNextHour);
 
-    cron.schedule('0 10 * * *', this.summarizeDaily.bind(this), {
-      timezone: "America/Los_Angeles"
-    });
+    this.scheduledTasks.push(
+      cron.schedule('0 10 * * *', this.summarizeDaily.bind(this), {
+        timezone: "America/Los_Angeles"
+      })
+    );
 
     logger.info('Summary tasks scheduled successfully');
   }
 
+  // Add method to stop tasks if needed
+  public stopTasks(): void {
+    this.scheduledTasks.forEach(task => task.stop());
+    this.scheduledTasks = [];
+    logger.info('Summary tasks stopped');
+  }
+
   private async summarizeMessages(): Promise<void> {
+    // Double-check enabled status before running
+    if (!summaryConfig.enabled) {
+      return;
+    }
+
     logger.info('Starting hourly message summarization');
 
     try {
@@ -120,6 +145,11 @@ export class SummaryModule {
   }
 
   private async summarizeDaily(): Promise<void> {
+    // Double-check enabled status before running
+    if (!summaryConfig.enabled) {
+      return;
+    }
+
     logger.info('Starting daily summary creation');
 
     try {

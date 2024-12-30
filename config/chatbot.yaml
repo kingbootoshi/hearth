@@ -1,5 +1,5 @@
 enabled: true
-openRouterModel: "anthropic/claude-3.5-sonnet:beta"
+openRouterModel: "deepseek/deepseek-chat"
 memoryExtractionModel: "deepseek/deepseek-chat"
 memorySummaryModel: "deepseek/deepseek-chat"
 botName: "Quest Boo"

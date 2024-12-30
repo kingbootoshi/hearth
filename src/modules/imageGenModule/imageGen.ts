@@ -11,12 +11,20 @@ const logger = pino({
   timestamp: pino.stdTimeFunctions.isoTime,
 })
 
-// Configure fal client with API key
-fal.config({
-  credentials: process.env.FAL_API_KEY
-})
+// Only configure fal client if module is enabled
+if (imageGenConfig.enabled) {
+  fal.config({
+    credentials: process.env.FAL_API_KEY
+  })
+}
 
 export async function submitImageJob(prompt: string): Promise<string> {
+  // Early return with error message if module is disabled
+  if (!imageGenConfig.enabled) {
+    logger.info('Image generation module is disabled')
+    throw new Error('Image generation is currently disabled')
+  }
+  
   logger.info('Submitting image generation job to FAL.ai')
   
   try {
@@ -58,6 +66,12 @@ export async function submitImageJob(prompt: string): Promise<string> {
 
 // This function is now just a pass-through since FAL returns the URL directly
 export async function getGeneratedImage(imageUrl: string): Promise<string> {
+  // Early return with error message if module is disabled
+  if (!imageGenConfig.enabled) {
+    logger.info('Image generation module is disabled')
+    throw new Error('Image generation is currently disabled')
+  }
+
   logger.info('Returning generated image URL')
   return imageUrl
 }
