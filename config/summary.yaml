@@ -1,4 +1,4 @@
-enabled: true
+enabled: false
 openRouterModel: "deepseek/deepseek-chat"
 
 # Summarizer system prompt example
