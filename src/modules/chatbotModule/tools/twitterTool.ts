@@ -59,7 +59,7 @@ async function postTweet(text: string, imageUrl?: string): Promise<string> {
   const tweetEndpoint = 'https://api.twitter.com/2/tweets';
   
   // Add signature
-  const finalText = `${text} - Quest Boo`;
+  const finalText = `${text}`;
   
   let mediaId: string | undefined;
   

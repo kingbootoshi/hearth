@@ -11,7 +11,6 @@ export interface ChatbotConfig {
   botName: string;
   personality: string;
   discordId: string;
-  memoryApiUrl: string;
   memoryEmbedChannelId: string;
   normalizedBotName: string;
   memorySystemPrompt: string;
@@ -77,7 +76,6 @@ export function loadChatbotConfig(): ChatbotConfig {
     normalizedBotName: normalizedName,
     personality,
     discordId: raw.discordId || '',
-    memoryApiUrl: raw.memoryApiUrl || 'http://localhost:8000',
     memoryEmbedChannelId: raw.memoryEmbedChannelId || '',
     memorySystemPrompt: raw.memorySystemPrompt || '',
     summarySystemPrompt: raw.summarySystemPrompt || '',

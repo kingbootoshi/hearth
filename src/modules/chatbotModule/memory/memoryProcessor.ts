@@ -1,12 +1,13 @@
 import fetch from 'node-fetch';
 import { Client, EmbedBuilder, TextChannel } from 'discord.js';
 import { createModuleLogger } from '../../../utils/logger';
-import { chatbotConfig } from '../../../config';
+import { chatbotConfig } from '../../../config/chatbotConfig';
 
 const logger = createModuleLogger('memoryProcessor');
 
 const AGENT_ID = chatbotConfig.normalizedBotName;
 const DEBUG_MODE = true;
+const MEMORY_API_URL = process.env.MEMORY_API_URL || 'http://localhost:8000';
 
 function debugLog(message: string, data?: any) {
   if (DEBUG_MODE) {
@@ -20,21 +21,21 @@ function debugLog(message: string, data?: any) {
  */
 async function pingMemoryServer(): Promise<boolean> {
   try {
-    const res = await fetch("http://localhost:8000/ping");
+    const res = await fetch(`${MEMORY_API_URL}/ping`);
     if (!res.ok) {
       logger.error({ status: res.status, statusText: res.statusText }, 'Ping to memory server failed');
       return false;
     }
     const body = await res.json();
     if (body.status === "ok") {
-      logger.info('Memory server ping successful');
+      logger.info({ url: MEMORY_API_URL }, 'Memory server ping successful');
       return true;
     } else {
-      logger.warn('Memory server ping responded but not OK');
+      logger.warn({ url: MEMORY_API_URL }, 'Memory server ping responded but not OK');
       return false;
     }
   } catch (error) {
-    logger.error({ error }, 'Error pinging memory server');
+    logger.error({ error, url: MEMORY_API_URL }, 'Error pinging memory server');
     return false;
   }
 }
@@ -127,13 +128,13 @@ async function addMemoryToMem0(params: {
       memories,
       agent_id,
       run_id,
-      user_id, // At top level
+      user_id,
       metadata: { timestamp: new Date().toISOString() }
     };
 
-    logger.debug({ requestBody: body }, 'Sending request to mem0');
+    logger.debug({ requestBody: body, url: MEMORY_API_URL }, 'Sending request to mem0');
 
-    const response = await fetch("http://localhost:8000/add", {
+    const response = await fetch(`${MEMORY_API_URL}/add`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -404,7 +405,8 @@ async function queryMemoryCategory(
     { 
       run_id,
       queryLength: query.length,
-      userId 
+      userId,
+      url: MEMORY_API_URL
     },
     'Starting memory category query'
   );
@@ -418,9 +420,9 @@ async function queryMemoryCategory(
       limit: 5
     };
 
-    logger.debug({ body }, 'Sending memory query request');
+    logger.debug({ body, url: MEMORY_API_URL }, 'Sending memory query request');
 
-    const response = await fetch("http://localhost:8000/query", {
+    const response = await fetch(`${MEMORY_API_URL}/query`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

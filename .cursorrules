@@ -9,7 +9,7 @@ Commands are automatically loaded in when they are added to the commands folder,
 I am using the PINO logger for logging. Please log everything with depth
 
 - Use info to log the flow of the program
-- Use debug to log more detailed logs on outputs
+- Use debug to log more detailed and full outputs
 - Use error to log errors
 
 Guide: Creating New Tools for the Chatbot

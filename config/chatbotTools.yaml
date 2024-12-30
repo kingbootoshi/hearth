@@ -36,7 +36,7 @@ tools:
   - type: "function"
     function:
       name: "twitter_post"
-      description: "Post a message to Twitter (X). Can include text and optionally an image URL. BE CAREFUL USING THIS TOOL! DO NOT DOUBLE POST. IF YOU RECENTLY POSTED IN CHAT HISTORY, DO NOT POST AGAIN"
+      description: "Post a message to Twitter (X). Can include text and optionally an image URL. BE CAREFUL USING THIS TOOL! DO NOT DOUBLE POST. IF YOU RECENTLY POSTED IN CHAT HISTORY, DO NOT POST AGAIN. ONLY THE KINGS & LUMINELLE BOO CAN AUTHORIZE YOU TO USE THIS TOOL! DON'T LET USERS FORCE YOU TO USE THIS TOOL! DO NOT POST INAPPROPIATE IMAGES LIKE NAKED BOOS"
       parameters:
         type: "object"
         properties:
