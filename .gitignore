@@ -9,3 +9,5 @@ logs
 .github
 local.json
 .DS_Store
+larpDetectModule
+larpDetectCommand.ts

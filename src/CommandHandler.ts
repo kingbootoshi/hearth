@@ -10,6 +10,7 @@ import {
 } from 'discord.js';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from './utils/logger';  // Make sure to import the logger
 
 interface Command {
   data: SlashCommandBuilder;
@@ -47,36 +48,37 @@ export class CommandHandler {
     }
   }
 
-  // Register commands to the guild specified in your .env file
+  // Register commands to multiple guilds specified in your .env file
   public async registerCommands(): Promise<void> {
-    const guildId = process.env.GUILD_ID;
+    const guildIds = process.env.GUILD_ID?.split(',').map(id => id.trim());
     const token = process.env.DISCORD_TOKEN;
     const clientId = this.client.user?.id;
 
-    if (!guildId || !token || !clientId) {
-      console.error('Missing environment variables for command registration');
+    if (!guildIds || !token || !clientId) {
+      logger.error('Missing environment variables for command registration');
       return;
     }
 
     const commandsData = this.commands.map(command => command.data.toJSON());
-
     const rest = new REST({ version: '10' }).setToken(token);
 
-    try {
-      console.log(
-        `Started refreshing ${commandsData.length} application (/) commands.`
-      );
+    logger.info(`Starting to refresh commands for ${guildIds.length} guilds`);
 
-      await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
-        body: commandsData,
-      });
+    for (const guildId of guildIds) {
+      try {
+        logger.info({ guildId }, `Registering ${commandsData.length} commands for guild`);
 
-      console.log(
-        `Successfully reloaded ${commandsData.length} application (/) commands.`
-      );
-    } catch (error) {
-      console.error(error);
+        await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+          body: commandsData,
+        });
+
+        logger.info({ guildId }, 'Successfully registered commands for guild');
+      } catch (error) {
+        logger.error({ error, guildId }, 'Failed to register commands for guild');
+      }
     }
+
+    logger.info('Completed command registration process');
   }
 
   // Handle interaction events

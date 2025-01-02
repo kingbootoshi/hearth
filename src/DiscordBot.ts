@@ -27,12 +27,22 @@ class ModuleRegistry {
   }
 }
 
+// Interface for storing ignore IDs
+interface DiscordBotConfig {
+  ignoreChannels: string[];
+  ignoreGuilds: string[];
+}
+
 export class DiscordBot {
   private moduleRegistry: ModuleRegistry;
   private commandHandler: CommandHandler;
   private client: Client;
 
-  constructor() {
+  // Add fields to store ignore lists
+  private ignoreChannels: string[];
+  private ignoreGuilds: string[];
+
+  constructor(config?: DiscordBotConfig) {
     this.moduleRegistry = new ModuleRegistry();
     
     this.client = new Client({
@@ -54,6 +64,10 @@ export class DiscordBot {
       ],
     });
 
+    // Pull in the ignore lists from config
+    this.ignoreChannels = config?.ignoreChannels ?? [];
+    this.ignoreGuilds = config?.ignoreGuilds ?? [];
+
     this.commandHandler = new CommandHandler(this.client);
     
     // Register modules
@@ -67,7 +81,12 @@ export class DiscordBot {
     const { ChatbotModule } = require('./modules/chatbotModule/chatbotModule');
 
     this.moduleRegistry.register(new SummaryModule(this.client));
-    this.moduleRegistry.register(new ChatbotModule(this.client));
+    this.moduleRegistry.register(
+      new ChatbotModule(this.client, {
+        ignoreChannels: this.ignoreChannels,
+        ignoreGuilds: this.ignoreGuilds
+      })
+    );
   }
 
   public async start(): Promise<void> {
@@ -121,5 +140,14 @@ export class DiscordBot {
       if (module.stop) await module.stop();
     }
     await this.client.destroy();
+  }
+
+  // Provide getters so modules can check ignore lists
+  public getIgnoreChannels(): string[] {
+    return this.ignoreChannels;
+  }
+
+  public getIgnoreGuilds(): string[] {
+    return this.ignoreGuilds;
   }
 }

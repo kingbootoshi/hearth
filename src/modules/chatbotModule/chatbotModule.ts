@@ -143,17 +143,30 @@ async function formatChatHistoryToMessages(
   }));
 }
 
+// Create an interface to accept ignore options
+interface ChatbotModuleConfig {
+  ignoreChannels: string[];
+  ignoreGuilds: string[];
+}
+
 export class ChatbotModule {
   private client: Client;
   private botUserId: string | undefined;
   private logger: Logger;
   private chatMemoryManager: ChatMemoryManager;
+  // Store the ignore arrays
+  private ignoreChannels: string[];
+  private ignoreGuilds: string[];
 
-  constructor(client: Client) {
+  constructor(client: Client, config?: ChatbotModuleConfig) {
     logger.info('Constructing ChatbotModule (separate file).');
     this.client = client;
     this.logger = new Logger();
     this.chatMemoryManager = new ChatMemoryManager(client, 30);
+
+    // Pull ignore arrays from config
+    this.ignoreChannels = config?.ignoreChannels ?? [];
+    this.ignoreGuilds = config?.ignoreGuilds ?? [];
   }
 
   // Helper function to get recent chat history
@@ -211,6 +224,24 @@ export class ChatbotModule {
     if (!chatbotConfig.enabled) {
       return;
     }
+
+    // Check if we should ignore this channel/guild if the bot is NOT mentioned
+    const currentChannelId = message.channel.id;
+    const currentGuildId = message.guild?.id;
+    const isMentioningBot = message.mentions.users.has(this.botUserId || '');
+
+    if (
+      (this.ignoreChannels.includes(currentChannelId) ||
+       (currentGuildId && this.ignoreGuilds.includes(currentGuildId))) &&
+      !isMentioningBot
+    ) {
+      logger.debug(
+        { channelId: currentChannelId, guildId: currentGuildId },
+        'Ignoring message based on .env ignore settings'
+      );
+      return;
+    }
+
     logger.info(
       {
         userId: message.author.id,

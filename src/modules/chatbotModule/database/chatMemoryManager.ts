@@ -127,7 +127,7 @@ export class ChatMemoryManager {
 
     // Store in mem0
     const { storeKnowledgeInMem0 } = await import('../memory/memoryProcessor');
-    await storeKnowledgeInMem0(formattedMemories, this.client);
+    storeKnowledgeInMem0(formattedMemories, this.client);
 
     logger.debug({ formattedMemories }, 'Formatted and stored memories in mem0');
   }
