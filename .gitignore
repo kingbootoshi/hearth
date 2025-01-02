@@ -6,3 +6,6 @@ bun.lockb
 Dockerfile
 package-lock.json
 logs
+.github
+local.json
+.DS_Store
