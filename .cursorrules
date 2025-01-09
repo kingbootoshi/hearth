@@ -4,6 +4,50 @@ This bot is also capable of running different command functionalities based on m
 
 Command functionality should be created as a module in the src/modules folder. Adding the command to the discord bot is done in the src/commands folder.
 
+Guide: Adding New Commands
+------------------------
+
+To add a new command to the bot, follow these steps:
+
+1. Create a Module (if needed):
+   - Create a new folder in src/modules for your command's functionality
+   - Implement the core logic and utilities in this module
+   - Export the necessary functions that will be used by the command
+
+2. Create Command File:
+   - Add a new TypeScript file in src/commands (e.g., myCommand.ts)
+   - File must export:
+     ```typescript
+     // Command definition
+     export const data = new SlashCommandBuilder()
+       .setName('commandname')
+       .setDescription('what the command does')
+       .addXXXOption(...); // Add any needed options
+
+     // Command execution logic
+     export async function execute(interaction: ChatInputCommandInteraction) {
+       // Implementation
+     }
+
+     // Button handler (if command uses buttons)
+     export async function handleButtonInteraction(
+       interaction: ButtonInteraction
+     ): Promise<void> {
+       // Button handling logic
+     }
+     ```
+
+3. Command Structure:
+   - Use proper error handling and logging
+   - Defer replies for operations that might take time
+   - Use embeds and buttons for rich interactions
+   - Follow the existing command patterns for consistency
+
+4. Button Interactions:
+   - If your command includes button interactions, update the CommandHandler.ts file to handle the button events.
+
+The command will be automatically loaded when added to the commands folder. If your command includes button interactions, update the CommandHandler.ts file to handle the button events.
+
 Commands are automatically loaded in when they are added to the commands folder, however button functionality has to be differentiated in the CommandHandler.ts file.
 
 I am using the PINO logger for logging. Please log everything with depth
