@@ -8,6 +8,7 @@ const logger = createModuleLogger('memoryProcessor');
 const AGENT_ID = chatbotConfig.normalizedBotName;
 const DEBUG_MODE = true;
 const MEMORY_API_URL = process.env.MEMORY_API_URL || 'http://localhost:8000';
+const MEMORY_API_KEY = process.env.MEMORY_API_KEY;
 
 function debugLog(message: string, data?: any) {
   if (DEBUG_MODE) {
@@ -21,7 +22,11 @@ function debugLog(message: string, data?: any) {
  */
 async function pingMemoryServer(): Promise<boolean> {
   try {
-    const res = await fetch(`${MEMORY_API_URL}/ping`);
+    const res = await fetch(`${MEMORY_API_URL}/ping`, {
+      headers: {
+        'X-Password': MEMORY_API_KEY || ''
+      }
+    });
     if (!res.ok) {
       logger.error({ status: res.status, statusText: res.statusText }, 'Ping to memory server failed');
       return false;
@@ -142,7 +147,8 @@ async function addMemoryToMem0(params: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json"
+        "Accept": "application/json",
+        "X-Password": MEMORY_API_KEY || ''
       },
       body: JSON.stringify(body)
     });
@@ -439,7 +445,8 @@ async function queryMemoryCategory(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json"
+        "Accept": "application/json",
+        "X-Password": MEMORY_API_KEY || ''
       },
       body: JSON.stringify(body)
     });

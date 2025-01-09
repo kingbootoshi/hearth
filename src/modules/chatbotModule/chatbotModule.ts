@@ -90,6 +90,20 @@ async function getRecentImagesFromChannel(
   channel: TextChannel,
   messageLimit: number = 5
 ): Promise<string[]> {
+  if (!channel.guild || !(channel instanceof TextChannel)) {
+    logger.debug("Not a valid text channel for images, skipping.");
+    return [];
+  }
+  const me = channel.guild.members.me;
+  if (!me) {
+    logger.debug("No valid guild member for me, skipping images.");
+    return [];
+  }
+  if (!channel.permissionsFor(me)?.has(['ViewChannel', 'ReadMessageHistory'])) {
+    logger.debug("No permission to read message history, skipping images.");
+    return [];
+  }
+
   const messages = await channel.messages.fetch({ limit: messageLimit });
   const imageUrls: string[] = [];
 
@@ -169,8 +183,36 @@ export class ChatbotModule {
     this.ignoreGuilds = config?.ignoreGuilds ?? [];
   }
 
+  /**
+   * Checks if the bot can view, read message history, and send messages in the given channel.
+   */
+  private canAccessChannel(channel: TextChannel): boolean {
+    // Single-line comment: Grab the "me" member from the guild.
+    const me = channel.guild?.members.me; 
+    if (!me) {
+      // Single-line comment: Return false if we don't have a guild member object.
+      return false;
+    }
+
+    // Single-line comment: Safely get the permissions for a valid member.
+    const permissions = channel.permissionsFor(me);
+    if (!permissions) {
+      return false;
+    }
+
+    const canView = permissions.has('ViewChannel');
+    const canReadHistory = permissions.has('ReadMessageHistory');
+    const canSend = permissions.has('SendMessages');
+    return canView && canReadHistory && canSend;
+  }
+
   // Helper function to get recent chat history
   private async getRecentChatHistory(channel: TextChannel, limit: number = 10): Promise<string> {
+    if (!this.canAccessChannel(channel)) {
+      logger.debug("Cannot read channel history, returning empty context.");
+      return '';
+    }
+
     const messages = await channel.messages.fetch({ limit });
     return messages.reverse().map(msg => {
       let content = msg.content;
@@ -225,6 +267,15 @@ export class ChatbotModule {
       return;
     }
 
+    if (!message.guild || !(message.channel instanceof TextChannel)) {
+      logger.debug("Not a valid guild channel, skipping.");
+      return;
+    }
+    if (!this.canAccessChannel(message.channel)) {
+      logger.debug("Bot lacks permission to read/send in this channel, skipping.");
+      return;
+    }
+
     // Check if we should ignore this channel/guild if the bot is NOT mentioned
     const currentChannelId = message.channel.id;
     const currentGuildId = message.guild?.id;
@@ -235,10 +286,6 @@ export class ChatbotModule {
        (currentGuildId && this.ignoreGuilds.includes(currentGuildId))) &&
       !isMentioningBot
     ) {
-      logger.debug(
-        { channelId: currentChannelId, guildId: currentGuildId },
-        'Ignoring message based on .env ignore settings'
-      );
       return;
     }
 
@@ -302,7 +349,12 @@ export class ChatbotModule {
     );
 
     // Build memory context
-    await message.channel.sendTyping();
+    try {
+      await message.channel.sendTyping();
+    } catch (error) {
+      logger.error({ error }, "Failed to send typing indicator - lacking permission or other error.");
+      return;
+    }
     const memoryContext = await queryAllMemories(message.content, message.author.id);
 
     logger.debug(
