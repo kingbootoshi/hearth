@@ -79,6 +79,7 @@ export class DiscordBot {
     // Import and register modules
     const { SummaryModule } = require('./modules/summaryModule/summaryModule');
     const { ChatbotModule } = require('./modules/chatbotModule/chatbotModule');
+    const { AutoVoteModule } = require('./modules/voteModule/autoVoteModule');
 
     this.moduleRegistry.register(new SummaryModule(this.client));
     this.moduleRegistry.register(
@@ -87,6 +88,7 @@ export class DiscordBot {
         ignoreGuilds: this.ignoreGuilds
       })
     );
+    this.moduleRegistry.register(new AutoVoteModule());
   }
 
   public async start(): Promise<void> {

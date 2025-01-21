@@ -140,3 +140,61 @@ CREATE TABLE IF NOT EXISTS daily_summaries (
 );
 
 ALTER TABLE daily_summaries ENABLE ROW LEVEL SECURITY;
+
+
+-- ===============================
+-- Points System Table
+-- ===============================
+CREATE TABLE IF NOT EXISTS user_points (
+  id BIGSERIAL PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  username TEXT NOT NULL,
+  points INTEGER NOT NULL DEFAULT 0,
+  last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  
+  -- Add unique constraint on user_id to prevent duplicates
+  CONSTRAINT unique_user_points UNIQUE (user_id)
+);
+
+-- Enable RLS (Row Level Security)
+ALTER TABLE user_points ENABLE ROW LEVEL SECURITY;
+
+-- Create index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_user_points_user_id ON user_points(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_points_points ON user_points(points DESC);
+
+-- Add some helpful functions
+CREATE OR REPLACE FUNCTION update_last_updated()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.last_updated = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to automatically update last_updated
+CREATE TRIGGER update_user_points_timestamp
+    BEFORE UPDATE ON user_points
+    FOR EACH ROW
+    EXECUTE FUNCTION update_last_updated();
+
+----------------------------------------------------------
+-- RLS POLICIES for user_points
+-- Allows SELECT, INSERT, and UPDATE for all users
+----------------------------------------------------------
+-- By default, enabling RLS blocks all operations, so we explicitly allow them:
+CREATE POLICY user_points_select_policy
+  ON user_points
+  FOR SELECT
+  USING (true);
+
+CREATE POLICY user_points_insert_policy
+  ON user_points
+  FOR INSERT
+  WITH CHECK (true);
+
+CREATE POLICY user_points_update_policy
+  ON user_points
+  FOR UPDATE
+  USING (true)
+  WITH CHECK (true);

@@ -1,5 +1,5 @@
 enabled: true
-openRouterModel: "deepseek/deepseek-chat"
+openRouterModel: "openai/gpt-4o"
 
 # Basic system prompt for enhancePrompt usage
 enhanceSystemPrompt: |
@@ -32,7 +32,10 @@ enhanceSystemPrompt: |
     ## FINAL INSTRUCTIONS:
     If the imagine seems enhanced enough, just return the original prompt.
         
-    Provide your enhanced prompt in JSON as a single, cohesive paragraph. {"prompt": prompt}
+    Provide your enhanced prompt in JSON as a single, cohesive paragraph. 
+    
+    PLEASE JUST OUTPUT THE FOLLOWING JSON FORMAT, NOTHING MORE.
+    {"prompt": prompt}
 
 # Basic system prompt for randomPrompt usage
 randomGenSystemPrompt: |
@@ -61,6 +64,8 @@ randomGenSystemPrompt: |
     When prompting Boo images, keep them relatively open. Don't name Boos, just say "a boo" or "boos"
 
     Output your image suggestion in the following JSON format:
+
+    OUTPUT IT EXACTLY AS THIS, NOTHING MORE.
 
     {"randomPrompt" : "random prompt"}
 

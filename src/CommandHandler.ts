@@ -125,6 +125,10 @@ export class CommandHandler {
       commandName = 'imagine'; // Ensure this matches the command's registered name
     } else if (customId.startsWith('randomGen_')) {
       commandName = 'random';  // Ensure this matches the command's registered name
+    } else if (customId.startsWith('leaderboard_')) {
+      commandName = 'leaderboard';
+    } else if (customId.startsWith('vote_') || customId === 'tweet_winner') {
+      commandName = 'gentweet';
     }
 
     if (commandName) {

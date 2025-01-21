@@ -282,15 +282,27 @@ export class LocalDb {
     const arrayRows = Array.isArray(rows) ? rows : [rows];
     try {
       for (const row of arrayRows) {
-        if (!row.id) {
+        // For points table, use user_id as the unique key
+        const uniqueKey = tableName === 'user_points' ? 'user_id' : 'id';
+        
+        // If no unique key value, generate an id and insert
+        if (!row[uniqueKey]) {
           row.id = Date.now() + Math.floor(Math.random() * 10000);
           table.push(row);
           continue;
         }
-        const existingIndex = table.findIndex((item: any) => item.id === row.id);
+
+        // Find existing record based on the unique key
+        const existingIndex = table.findIndex((item: any) => item[uniqueKey] === row[uniqueKey]);
         if (existingIndex > -1) {
-          table[existingIndex] = { ...table[existingIndex], ...row };
+          // Update existing record while preserving its id
+          const existingId = table[existingIndex].id;
+          table[existingIndex] = { ...row, id: existingId };
         } else {
+          // Insert new record with generated id if not provided
+          if (!row.id) {
+            row.id = Date.now() + Math.floor(Math.random() * 10000);
+          }
           table.push(row);
         }
       }
