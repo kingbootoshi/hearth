@@ -3,7 +3,7 @@ import type { ChatCompletionMessageParam } from 'openai/resources/chat/completio
 import { imageGenConfig } from '../../config';
 import pino from 'pino';
 import { createChatCompletion } from '../../utils/openRouter/client';
-import { generateSeedPhrase } from '../../utils/seedGen';
+import { generateSeedPhrase } from '../../utils/seedGen/seedGen';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -17,8 +17,8 @@ export async function randomPrompt(): Promise<string> {
   logger.info('Generating random image prompt with OpenRouter');
 
   try {
-    // Generate a random seed phrase
-    const randomSeed = await generateSeedPhrase();
+    // Generate a random seed phrase (now synchronous)
+    const randomSeed = generateSeedPhrase();
     logger.debug({ randomSeed }, 'Generated random seed phrase');
 
     const messages: ChatCompletionMessageParam[] = [

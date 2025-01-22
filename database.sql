@@ -198,3 +198,23 @@ CREATE POLICY user_points_update_policy
   FOR UPDATE
   USING (true)
   WITH CHECK (true);
+
+-- ===============================
+-- 11) daily_votes
+-- Tracks daily image votes; one row per day.
+-- If is_active = true, that vote is ongoing.
+-- If ended_at IS NOT NULL, the vote is concluded.
+-- We'll store images and the winner in these fields.
+-- ===============================
+CREATE TABLE IF NOT EXISTS daily_votes (
+  id BIGSERIAL PRIMARY KEY,
+  day_date DATE NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  started_at TIMESTAMPTZ NOT NULL,
+  ended_at TIMESTAMPTZ,
+  images JSONB NOT NULL,         -- array of objects: {imageUrl, prompt, caption}
+  winner_image TEXT,
+  winner_caption TEXT
+);
+
+ALTER TABLE daily_votes ENABLE ROW LEVEL SECURITY;
