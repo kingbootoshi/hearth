@@ -2,7 +2,7 @@ import { Client, TextChannel, EmbedBuilder } from 'discord.js';
 import { submitImageJob } from '../imageGenModule/imageGen';
 import { enhancePrompt } from '../imageGenModule/enhancePrompt';
 import { handleTwitterPost } from '../chatbotModule/tools/twitterTool';
-import { setActiveVote, endVote, VoteEntry, VoteData } from './voteManager';
+import { setActiveVote, endVote, getActiveVote, VoteEntry, VoteData } from './voteManager';
 import { logger } from '../../utils/logger';
 import { randomPrompt } from '../imageGenModule/randomPrompt';
 import { generateImageCaption } from './captioner';
@@ -11,35 +11,25 @@ import {
   getActiveDailyVote,
   createDailyVote,
   finalizeDailyVote,
-  DailyVoteRow
+  DailyVoteRow,
+  updateDailyVoteMessageId
 } from './database/voteDB';
 import moment from 'moment-timezone';
 import { voteConfig } from '../../config/voteConfig';
 
-/**
- * Returns the current date string in PST in "YYYY-MM-DD" format.
- */
 function getPSTDateString(): string {
   return moment().tz('America/Los_Angeles').format('YYYY-MM-DD');
 }
 
-/**
- * Returns a moment object set to “today at 10:00 AM PST”.
- * If the current PST time is already past 10 AM, it uses tomorrow at 10 AM PST.
- */
 function getNext10AMPST(): moment.Moment {
   const now = moment().tz('America/Los_Angeles');
   const next10AM = now.clone().set({ hour: 10, minute: 0, second: 0, millisecond: 0 });
-
   if (now.isAfter(next10AM)) {
     next10AM.add(1, 'day');
   }
   return next10AM;
 }
 
-/**
- * Returns how many milliseconds from "right now" until the next 10 AM PST.
- */
 function msUntilNext10AMPST(): number {
   const now = moment().tz('America/Los_Angeles');
   const next10AM = getNext10AMPST();
@@ -51,7 +41,7 @@ export class AutoVoteManager {
   private currentTimeout: ReturnType<typeof setTimeout> | null = null;
   private isGenerating = false;
   private dailyVoteRecordId: number | null = null;
-  private voteChannelId: string;  // Use from config
+  private voteChannelId: string;
 
   private constructor(private client: Client) {
     this.voteChannelId = voteConfig.voteChannelId;
@@ -65,7 +55,6 @@ export class AutoVoteManager {
   }
 
   public async start(): Promise<void> {
-    // If disabled in config, do nothing
     if (!voteConfig.enabled) {
       logger.info('AutoVoteManager is disabled via config.');
       return;
@@ -78,7 +67,6 @@ export class AutoVoteManager {
 
       if (active) {
         logger.info(`Found active daily vote in DB: id=${active.id}, day_date=${active.day_date}`);
-
         if (active.day_date === todayStr) {
           this.dailyVoteRecordId = active.id!;
           logger.info('Resuming today’s vote; scheduling finalize for next 10 AM PST.');
@@ -174,6 +162,7 @@ export class AutoVoteManager {
         return;
       }
 
+      // Create DB row
       const rowData = await createDailyVote(dayStr, entries);
       if (!rowData?.id) {
         logger.error('Failed to create daily_votes row, aborting daily vote creation.');
@@ -181,6 +170,7 @@ export class AutoVoteManager {
       }
       this.dailyVoteRecordId = rowData.id;
 
+      // Post the vote in Discord
       const channel = await this.client.channels.fetch(this.voteChannelId) as TextChannel;
       if (!channel) {
         logger.error('Target channel not found, cannot post daily vote.');
@@ -194,6 +184,7 @@ export class AutoVoteManager {
         components: rows,
       });
 
+      // Store the poll in memory
       const voteData: VoteData = {
         entries,
         endTime: getNext10AMPST().valueOf(),
@@ -202,6 +193,9 @@ export class AutoVoteManager {
         votedUsers: new Set<string>(),
       };
       setActiveVote(message.id, voteData);
+
+      // Update DB with the message ID
+      await updateDailyVoteMessageId(rowData.id!, message.id);
 
       logger.info(`New daily vote posted in #${channel.id}, message=${message.id}`);
       this.scheduleFinalize();
@@ -220,30 +214,55 @@ export class AutoVoteManager {
       return;
     }
 
-    let winner: VoteEntry | null = null;
-    let winnerVotes = 0;
-
-    const allVotes = require('./voteManager').getActiveVotes() as Map<string, VoteData>;
-    for (const [msgId, data] of allVotes.entries()) {
-      if (data.entries) {
-        const topEntry = data.entries.reduce((prev, curr) =>
-          curr.votes.size > prev.votes.size ? curr : prev
-        );
-        if (topEntry.votes.size > winnerVotes) {
-          winner = topEntry;
-          winnerVotes = topEntry.votes.size;
-        }
-      }
+    // Fetch the row from DB to get the messageId we stored
+    // (We assume it's still active.)
+    let dailyVoteRow: DailyVoteRow | null = null;
+    try {
+      const activeRow = await getActiveDailyVote();
+      dailyVoteRow = activeRow && activeRow.id === this.dailyVoteRecordId ? activeRow : null;
+    } catch (error) {
+      logger.error(error, 'Error re-fetching active daily vote row');
     }
 
-    if (!winner) {
-      logger.info('No in-memory winner found. Possibly no votes. Finalizing with blank winner.');
-      await finalizeDailyVote(this.dailyVoteRecordId, '', 'No winner');
+    if (!dailyVoteRow?.message_id) {
+      logger.info('No daily vote row or missing message_id. Scheduling next day creation...');
+      this.scheduleNextVote();
+      return;
+    }
+
+    // Now get that poll from memory
+    const voteData = getActiveVote(dailyVoteRow.message_id);
+    if (!voteData) {
+      logger.info('No in-memory vote found for message_id=' + dailyVoteRow.message_id);
+      // Possibly no votes cast or bot was restarted
+      // We'll finalize anyway with no winner
+      await finalizeDailyVote(this.dailyVoteRecordId, '', 'No votes cast or poll not found');
       this.dailyVoteRecordId = null;
       this.scheduleNextVote();
       return;
     }
 
+    // Calculate winner from the single poll
+    let winner: VoteEntry | null = null;
+    let winnerVotes = 0;
+    for (const entry of voteData.entries) {
+      const count = entry.votes.size;
+      if (count > winnerVotes) {
+        winner = entry;
+        winnerVotes = count;
+      }
+    }
+
+    if (!winner) {
+      logger.info('No one voted, finalizing with blank winner');
+      await finalizeDailyVote(this.dailyVoteRecordId, '', 'No winner');
+      endVote(dailyVoteRow.message_id);
+      this.dailyVoteRecordId = null;
+      this.scheduleNextVote();
+      return;
+    }
+
+    // We have a winner
     logger.info(`Found winner with ${winnerVotes} votes, imageUrl=${winner.imageUrl}`);
 
     try {
@@ -259,6 +278,7 @@ export class AutoVoteManager {
         logger.info('Posted winner in channel.');
       }
 
+      // Tweet it
       await handleTwitterPost({
         text: winner.caption,
         image_url: winner.imageUrl,
@@ -272,10 +292,13 @@ export class AutoVoteManager {
       await finalizeDailyVote(this.dailyVoteRecordId, '', 'Failed to post or tweet winner');
     }
 
+    // Now remove this poll from memory
+    endVote(dailyVoteRow.message_id);
     this.dailyVoteRecordId = null;
-    // -- FIX #3: Instead of waiting for next day, post next poll immediately
-    logger.info('Scheduling immediate creation of next vote AFTER finalizing...');
-    await this.generateAndStartVote();
+
+    // SCHEDULING next day’s poll at 10 AM
+    logger.info('Done finalizing current day. Next poll scheduled for tomorrow at 10 AM PST.');
+    this.scheduleNextVote();
   }
 
   private async forceFinalizeOldVote(oldRow: DailyVoteRow): Promise<void> {
@@ -283,7 +306,7 @@ export class AutoVoteManager {
       await finalizeDailyVote(
         oldRow.id!,
         oldRow.winner_image || '',
-        oldRow.winner_caption || 'Missed finalization – forced on startup'
+        oldRow.winner_caption || 'Forced finalize from old day'
       );
     } catch (err) {
       logger.error(err, 'Error forcibly finalizing old daily vote');

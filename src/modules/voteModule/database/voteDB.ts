@@ -10,6 +10,7 @@ export interface DailyVoteRow {
   images: any;              // JSON array of vote entries
   winner_image?: string;
   winner_caption?: string;
+  message_id?: string;      // NEW FIELD for storing the Discord message ID
 }
 
 /**
@@ -56,6 +57,23 @@ export async function createDailyVote(dayDate: string, images: any): Promise<Dai
 
   logger.info('[voteDB] Created new daily vote:', data);
   return data;
+}
+
+/**
+ * Update the daily vote row to store the Discord messageId once we’ve sent the message.
+ */
+export async function updateDailyVoteMessageId(id: number, messageId: string): Promise<void> {
+  logger.debug(`[voteDB] updateDailyVoteMessageId for id=${id}, messageId=${messageId}`);
+  const { error } = await supabase
+    .from('daily_votes')
+    .update({ message_id: messageId })
+    .eq('id', id);
+
+  if (error) {
+    logger.error('[voteDB] Error updating daily vote message_id:', error);
+  } else {
+    logger.info('[voteDB] Successfully stored message_id on daily vote row');
+  }
 }
 
 /**
