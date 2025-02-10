@@ -209,8 +209,8 @@ export class AutoVoteManager {
   private async finalizeVote(): Promise<void> {
     logger.info('Finalizing the daily vote now...');
     if (!this.dailyVoteRecordId) {
-      logger.warn('No dailyVoteRecordId; might have been none started. Scheduling next create...');
-      this.scheduleNextVote();
+      logger.warn('No dailyVoteRecordId; might have been none started. Posting next vote immediately...');
+      await this.generateAndStartVote();
       return;
     }
 
@@ -225,8 +225,9 @@ export class AutoVoteManager {
     }
 
     if (!dailyVoteRow?.message_id) {
-      logger.info('No daily vote row or missing message_id. Scheduling next day creation...');
-      this.scheduleNextVote();
+      logger.info('No daily vote row or missing message_id. Creating next vote immediately...');
+      this.dailyVoteRecordId = null;
+      await this.generateAndStartVote();
       return;
     }
 
@@ -238,7 +239,8 @@ export class AutoVoteManager {
       // We'll finalize anyway with no winner
       await finalizeDailyVote(this.dailyVoteRecordId, '', 'No votes cast or poll not found');
       this.dailyVoteRecordId = null;
-      this.scheduleNextVote();
+      logger.info('Done finalizing. Creating next vote immediately...');
+      await this.generateAndStartVote();
       return;
     }
 
@@ -258,7 +260,8 @@ export class AutoVoteManager {
       await finalizeDailyVote(this.dailyVoteRecordId, '', 'No winner');
       endVote(dailyVoteRow.message_id);
       this.dailyVoteRecordId = null;
-      this.scheduleNextVote();
+      logger.info('Done finalizing. Creating next vote immediately...');
+      await this.generateAndStartVote();
       return;
     }
 
@@ -296,9 +299,9 @@ export class AutoVoteManager {
     endVote(dailyVoteRow.message_id);
     this.dailyVoteRecordId = null;
 
-    // SCHEDULING next day’s poll at 10 AM
-    logger.info('Done finalizing current day. Next poll scheduled for tomorrow at 10 AM PST.');
-    this.scheduleNextVote();
+    // Immediately start new vote instead of waiting until the next day
+    logger.info('Done finalizing current day. Posting next vote immediately as requested fix.');
+    await this.generateAndStartVote();
   }
 
   private async forceFinalizeOldVote(oldRow: DailyVoteRow): Promise<void> {
