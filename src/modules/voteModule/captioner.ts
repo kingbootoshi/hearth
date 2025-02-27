@@ -8,8 +8,12 @@ import axios from 'axios';
 // Load environment variables
 dotenv.config();
 
-// Get API key from environment or use a fallback for testing
-const apiKey = process.env.OPENAI_API_KEY || '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';
+// Get API key from environment
+const apiKey = process.env.OPENAI_API_KEY;
+
+if (!apiKey) {
+  throw new Error('OPENAI_API_KEY environment variable is not set');
+}
 
 // Initialize OpenAI client with OpenRouter base URL
 const openai = new OpenAI({

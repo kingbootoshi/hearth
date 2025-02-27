@@ -1,12 +1,8 @@
 import { generateCaption } from './captioner';
 import { logger } from '../../utils/logger';
 import * as dotenv from 'dotenv';
-import { config } from 'process';
 
-// Force set the environment variable
-process.env.OPENAI_API_KEY = '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';
-
-// Then load any other environment variables
+// Load environment variables
 dotenv.config();
 
 async function testCaptioner() {
