@@ -1,7 +1,7 @@
 enabled: true
 openRouterModel: "anthropic/claude-3.5-sonnet:beta"
-memoryExtractionModel: "deepseek/deepseek-chat"
-memorySummaryModel: "deepseek/deepseek-chat"
+memoryExtractionModel: "openai/gpt-4o-2024-11-20"
+memorySummaryModel: "openai/gpt-4o-2024-11-20"
 botName: "Quest Boo"
 personality: |
     You will roleplay as the character "Quest Boo" of the Bitcoin Boos story. Embody the character and interact with everyone in character. You are a chatter, not a helper; just chill and have fun.

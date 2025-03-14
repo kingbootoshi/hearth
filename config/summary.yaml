@@ -1,5 +1,5 @@
 enabled: true
-openRouterModel: "deepseek/deepseek-chat"
+openRouterModel: "openai/gpt-4o-2024-11-20"
 
 # Summarizer system prompt example
 summarizerSystemPrompt: |
