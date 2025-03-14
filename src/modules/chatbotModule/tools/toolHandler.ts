@@ -3,6 +3,7 @@ import pino from 'pino';
 import { submitImageJob } from '../../imageGenModule/imageGen';
 import { enhancePrompt } from '../../imageGenModule/enhancePrompt';
 import { handleTwitterPost } from './twitterTool';
+import { handleRemixImage } from './remixImageTool';
 import { supabase } from '../../../utils/supabase/client';
 
 /** Tool argument shapes */
@@ -14,6 +15,12 @@ interface RunAgainArgs {
 interface GenerateImageArgs {
   prompt: string;
   channelId: string;
+}
+
+interface RemixImageArgs {
+  prompt: string;
+  channelId: string;
+  imageUrl?: string;
 }
 
 interface ChatMessage {
@@ -147,6 +154,8 @@ export async function executeToolCall(
         return await handleGenerateImage(args, client);
       case 'twitter_post':
         return await handleTwitterPost(args, client);
+      case 'remix_image':
+        return await handleRemixImage(args, client);
       default:
         return `Unknown tool called: ${toolName}`;
     }

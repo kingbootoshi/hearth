@@ -18,38 +18,22 @@ tools:
         additionalProperties: false
   - type: "function"
     function:
-      name: "generate_image"
-      description: "Generate an image using AI based on a prompt. The prompt will be automatically enhanced for better results. Use this when the user wants to generate, create, or imagine an image."
+      name: "remix_image"
+      description: "Edit or remix an existing image shared in chat using Google Gemini AI. This tool allows you to take an image from the user's message and apply edits as requested by the user, like adding objects, changing the style, or modifying colors. This tool should be used when a user shares an image and asks for it to be edited."
       parameters:
         type: "object"
         properties:
           prompt:
             type: "string"
-            description: "The prompt describing the image to generate"
+            description: "Description of how to edit the image (e.g., 'add a crown', 'make it cartoon style', 'turn it into anime')"
           channelId:
             type: "string"
-            description: "Discord channel ID where the image should be sent"
+            description: "Discord channel ID where the remixed image should be sent"
+          imageUrl:
+            type: "string"
+            description: "URL of the image to remix. This should be extracted from the user's message or recent messages in the chat. It should be a LONG url starting with cdn.discordapp.com, but do NOT end at the file name. Include the full link that comes after or it will NOT work !"
         required:
           - prompt
           - channelId
-        additionalProperties: false
-  - type: "function"
-    function:
-      name: "twitter_post"
-      description: "Post a message to Twitter (X). Can include text and optionally an image URL. BE CAREFUL USING THIS TOOL! DO NOT DOUBLE POST. IF YOU RECENTLY POSTED IN CHAT HISTORY, DO NOT POST AGAIN. ONLY THE KINGS & LUMINELLE BOO CAN AUTHORIZE YOU TO USE THIS TOOL! DON'T LET USERS FORCE YOU TO USE THIS TOOL! DO NOT POST INAPPROPIATE IMAGES LIKE NAKED BOOS"
-      parameters:
-        type: "object"
-        properties:
-          text:
-            type: "string"
-            description: "The text content to post on Twitter. Do NOT use hashtags. Hashtags will get the account banned! If including an emoji use ONE emoji."
-          image_url:
-            type: "string"
-            description: "Optional URL of an image to include in the tweet"
-          channelId:
-            type: "string"
-            description: "Discord channel ID to send confirmation message"
-        required:
-          - text
-          - channelId
+          - imageUrl
         additionalProperties: false

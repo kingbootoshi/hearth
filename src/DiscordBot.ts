@@ -80,6 +80,10 @@ export class DiscordBot {
     const { SummaryModule } = require('./modules/summaryModule/summaryModule');
     const { ChatbotModule } = require('./modules/chatbotModule/chatbotModule');
     const { AutoVoteModule } = require('./modules/voteModule/autoVoteModule');
+    const { getRemixImageModule } = require('./modules/remixImageModule');
+
+    // Initialize RemixImageModule
+    getRemixImageModule(this.client);
 
     this.moduleRegistry.register(new SummaryModule(this.client));
     this.moduleRegistry.register(
